@@ -25,3 +25,9 @@ replay_pid*
 
 # vscode
 .vscode/
+
+# Intellij
+.idea/
+out/
+!**/src/main/**/out/
+!**/src/test/**/out/
