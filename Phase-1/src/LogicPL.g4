@@ -62,6 +62,153 @@ returnf
     SEMICOLON
     ;
 
+statement
+    : print
+    | returnf
+    | declaration
+    | assignment
+    | initialization
+    | function_call
+    | predicate_def
+    | query_type1
+    | query_type2
+    | implication
+    ;
+
+declaration
+    :
+    PRIMITIVE
+    (
+    LBRACKET
+    INT_VAL
+    RBRACKET
+    )?
+    name = IDENTIFIER { System.out.println("VarDec: " + $name.text); }
+    SEMICOLON
+    ;
+
+assignment
+    :
+    IDENTIFIER
+    (
+    LBRACKET
+    INT_VAL
+    RBRACKET
+    )?
+    ASSIGN
+    'rhs'
+    SEMICOLON
+    ;
+
+initialization
+    :
+    PRIMITIVE
+    (
+    LBRACKET
+    INT_VAL
+    RBRACKET
+    )?
+    name = IDENTIFIER { System.out.println("VarDec: " + $name.text); }
+    ASSIGN
+    'rhs'
+    SEMICOLON
+    ;
+
+function_call
+    :
+    IDENTIFIER
+    LPAR
+    'call body'
+    RPAR
+    ;
+
+predicate_def
+    :
+    name = PREDICATE { System.out.println("Predicate: " + $name.text); }
+    LPAR
+    IDENTIFIER
+    RPAR
+    ;
+
+query_type1
+    :
+    LBRACKET
+    QUESTION
+    predicate_def
+    RBRACKET
+    ;
+
+query_type2
+    :
+    LBRACKET
+    name = PREDICATE { System.out.println("Predicate: " + $name.text); }
+    LPAR
+    QUESTION
+    RPAR
+    RBRACKET
+    ;
+
+implication
+    :
+    LPAR { System.out.println("Implication"); }
+    expr
+    RPAR
+    ARROW
+    LPAR
+    'body'
+    RPAR
+    ;
+
+expr
+    : expr_logic_or
+    ;
+
+expr_logic_or
+    : expr_logic_and (OR expr_logic_and { System.out.println("Operator: ||"); })*
+    ;
+
+expr_logic_and
+    : expr_rel_eq_neq (AND expr_rel_eq_neq { System.out.println("Operator: &&"); })*
+    ;
+
+expr_rel_eq_neq
+    : expr_rel_cmp (EQL expr_rel_cmp { System.out.println("Operator: =="); } |
+                    NEQ expr_rel_cmp { System.out.println("Operator: !="); })*
+    ;
+
+expr_rel_cmp
+    : expr_arith_plus_minus (GTR expr_arith_plus_minus { System.out.println("Operator: >"); } |
+                             GEQ expr_arith_plus_minus { System.out.println("Operator: >="); } |
+                             LES expr_arith_plus_minus { System.out.println("Operator: <"); } |
+                             LEQ expr_arith_plus_minus { System.out.println("Operator: <="); })*
+    ;
+
+expr_arith_plus_minus
+    : expr_arith_mult_div_mod (PLUS expr_arith_mult_div_mod { System.out.println("Operator: +"); } |
+                               MINUS expr_arith_mult_div_mod { System.out.println("Operator: -"); })*
+    ;
+
+expr_arith_mult_div_mod
+    : expr_unary_plus_minus_not (MULT expr_unary_plus_minus_not { System.out.println("Operator: *"); } |
+                                 DIV expr_unary_plus_minus_not { System.out.println("Operator: /"); } |
+                                 MOD expr_unary_plus_minus_not { System.out.println("Operator: %"); })*
+    ;
+
+expr_unary_plus_minus_not
+    : PLUS expr_array_bracket { System.out.println("Operator: +"); }
+    | MINUS expr_array_bracket { System.out.println("Operator: -"); }
+    | NOT expr_array_bracket { System.out.println("Operator: !"); }
+    | expr_array_bracket
+    ;
+
+expr_array_bracket
+    :
+    ;
+
+expr_parenthesis
+    :
+    ;
+
 // Keywords
 
 MAIN:     'main';
