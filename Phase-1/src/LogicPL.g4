@@ -1,14 +1,31 @@
 grammar LogicPL;
 
 logicPL
-    : function* main
+    : (function | COMMENT)* main COMMENT*
+    ;
+
+primitive
+    : INT
+    | FLOAT
+    | BOOLEAN
+    ;
+
+primitive_val
+    : INT_VAL
+    | ZERO
+    | FLOAT_VAL
+    | BOOLEAN_VAL
+    ;
+
+primitive_val_sign
+    : op = ('-' | '+') (INT_VAL | FLOAT_VAL) { System.out.println("Operator: " + $op.text); }
     ;
 
 main
     :
     MAIN { System.out.println("MainBody"); }
     LBRACE
-    'main body'
+    body_function
     RBRACE
     ;
 
@@ -18,29 +35,45 @@ function
     name = IDENTIFIER { System.out.println("FunctionDec: " + $name.text); }
     LPAR
     (
-    PRIMITIVE
+    primitive
     idn = IDENTIFIER { System.out.println("ArgumentDec: " + $idn.text); }
         (
         COMMA
-        PRIMITIVE
+        primitive
         idn2 = IDENTIFIER { System.out.println("ArgumentDec: " + $idn2.text); }
         )*
     )?
     RPAR
     COLON
-    PRIMITIVE
+    primitive
     LBRACE
-    'function body'
+    body_function
     RBRACE
+    ;
+
+body_function
+    : (statement | COMMENT)*
+    ;
+
+statement
+    : (print
+    | returnf
+    | declaration
+    | assignment
+    | initialization
+    | initialization_array
+    | function_call
+    | predicate_def) SEMICOLON
+    | forloop
+    | implication
     ;
 
 print
     :
     PRINT { System.out.println("Built-in: print"); }
     LPAR
-    'print body'
+    (IDENTIFIER | array | query_bool | query_list)
     RPAR
-    SEMICOLON
     ;
 
 forloop
@@ -52,39 +85,33 @@ forloop
     IDENTIFIER
     RPAR
     LBRACE
-    'forloop body'
+    body_function
     RBRACE
     ;
 
 returnf
     :
     RETURN { System.out.println("Return"); }
-    SEMICOLON
+    (IDENTIFIER | primitive_val | primitive_val_sign)?
     ;
 
-statement
-    : print
-    | returnf
-    | declaration
-    | assignment
-    | initialization
-    | function_call
-    | predicate_def
-    | query_type1
-    | query_type2
-    | implication
+array
+    :
+    IDENTIFIER
+    LBRACKET
+    expr_arith_plus_minus
+    RBRACKET
     ;
 
 declaration
     :
-    PRIMITIVE
+    primitive
     (
     LBRACKET
     INT_VAL
     RBRACKET
     )?
     name = IDENTIFIER { System.out.println("VarDec: " + $name.text); }
-    SEMICOLON
     ;
 
 assignment
@@ -96,29 +123,45 @@ assignment
     RBRACKET
     )?
     ASSIGN
-    'rhs'
-    SEMICOLON
+    expr
     ;
 
 initialization
     :
-    PRIMITIVE
-    (
+    primitive
+    name = IDENTIFIER { System.out.println("VarDec: " + $name.text); }
+    ASSIGN
+    expr
+    ;
+
+initialization_array
+    :
+    primitive
     LBRACKET
     INT_VAL
     RBRACKET
-    )?
     name = IDENTIFIER { System.out.println("VarDec: " + $name.text); }
     ASSIGN
-    'rhs'
-    SEMICOLON
+    LBRACKET
+    (primitive_val | primitive_val_sign)
+    (
+    COMMA
+    (primitive_val | primitive_val_sign)
+    )*
+    RBRACKET
     ;
 
 function_call
     :
     IDENTIFIER
     LPAR
-    'call body'
+    (
+    expr
+        (
+        COMMA
+        expr
+        )*
+    )?
     RPAR
     ;
 
@@ -126,26 +169,8 @@ predicate_def
     :
     name = PREDICATE { System.out.println("Predicate: " + $name.text); }
     LPAR
-    IDENTIFIER
+    (IDENTIFIER | array)
     RPAR
-    ;
-
-query_type1
-    :
-    LBRACKET
-    QUESTION
-    predicate_def
-    RBRACKET
-    ;
-
-query_type2
-    :
-    LBRACKET
-    name = PREDICATE { System.out.println("Predicate: " + $name.text); }
-    LPAR
-    QUESTION
-    RPAR
-    RBRACKET
     ;
 
 implication
@@ -155,8 +180,26 @@ implication
     RPAR
     ARROW
     LPAR
-    'body'
+    body_function
     RPAR
+    ;
+
+query_bool
+    :
+    LBRACKET
+    QUESTION
+    predicate_def
+    RBRACKET
+    ;
+
+query_list
+    :
+    LBRACKET
+    name = PREDICATE { System.out.println("Predicate: " + $name.text); }
+    LPAR
+    QUESTION
+    RPAR
+    RBRACKET
     ;
 
 expr
@@ -195,18 +238,19 @@ expr_arith_mult_div_mod
     ;
 
 expr_unary_plus_minus_not
-    : PLUS expr_array_bracket { System.out.println("Operator: +"); }
-    | MINUS expr_array_bracket { System.out.println("Operator: -"); }
-    | NOT expr_array_bracket { System.out.println("Operator: !"); }
-    | expr_array_bracket
+    : PLUS expr_other { System.out.println("Operator: +"); }
+    | MINUS expr_other { System.out.println("Operator: -"); }
+    | NOT expr_other { System.out.println("Operator: !"); }
+    | expr_other
     ;
 
-expr_array_bracket
-    :
-    ;
-
-expr_parenthesis
-    :
+expr_other
+    : LPAR expr RPAR
+    | array
+    | IDENTIFIER
+    | function_call
+    | query_bool
+    | primitive_val
     ;
 
 // Keywords
@@ -219,15 +263,15 @@ RETURN:   'return';
 
 // Types
 
-PRIMITIVE: INT | FLOAT | BOOLEAN;
 INT:       'int';
 FLOAT:     'float';
 BOOLEAN:   'boolean';
 
 // Type Values
 
-INT_VAL:     [0-9]+;
-FLOAT_VAL:   INT_VAL '.' INT_VAL? | '.' INT_VAL;
+ZERO:        '0';
+INT_VAL:     [1-9][0-9]*;
+FLOAT_VAL:   INT_VAL '.' [0-9]+ | '0.' [0-9]*;
 BOOLEAN_VAL: 'true' | 'false';
 
 // Parenthesis
