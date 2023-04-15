@@ -207,34 +207,64 @@ expr
     ;
 
 expr_logic_or
-    : expr_logic_and (OR expr_logic_and { System.out.println("Operator: ||"); })*
+    : expr_logic_and expr_logic_or_
+    ;
+
+expr_logic_or_
+    : OR expr_logic_and expr_logic_or_ { System.out.println("Operator: ||"); }
+    | // epsilon
     ;
 
 expr_logic_and
-    : expr_rel_eq_neq (AND expr_rel_eq_neq { System.out.println("Operator: &&"); })*
+    : expr_rel_eq_neq expr_logic_and_
+    ;
+
+expr_logic_and_
+    : AND expr_rel_eq_neq expr_logic_and_ { System.out.println("Operator: &&"); }
+    | // epsilon
     ;
 
 expr_rel_eq_neq
-    : expr_rel_cmp (EQL expr_rel_cmp { System.out.println("Operator: =="); } |
-                    NEQ expr_rel_cmp { System.out.println("Operator: !="); })*
+    : expr_rel_cmp expr_rel_eq_neq_
+    ;
+
+expr_rel_eq_neq_
+    : EQL expr_rel_cmp expr_rel_eq_neq_ { System.out.println("Operator: =="); }
+    | NEQ expr_rel_cmp expr_rel_eq_neq_ { System.out.println("Operator: !="); }
+    | // epsilon
     ;
 
 expr_rel_cmp
-    : expr_arith_plus_minus (GTR expr_arith_plus_minus { System.out.println("Operator: >"); } |
-                             GEQ expr_arith_plus_minus { System.out.println("Operator: >="); } |
-                             LES expr_arith_plus_minus { System.out.println("Operator: <"); } |
-                             LEQ expr_arith_plus_minus { System.out.println("Operator: <="); })*
+    : expr_arith_plus_minus expr_rel_cmp_
+    ;
+
+expr_rel_cmp_
+    : GTR expr_arith_plus_minus expr_rel_cmp_ { System.out.println("Operator: >"); }
+    | GEQ expr_arith_plus_minus expr_rel_cmp_ { System.out.println("Operator: >="); }
+    | LES expr_arith_plus_minus expr_rel_cmp_ { System.out.println("Operator: <"); }
+    | LEQ expr_arith_plus_minus expr_rel_cmp_ { System.out.println("Operator: <="); }
+    | // epsilon
     ;
 
 expr_arith_plus_minus
-    : expr_arith_mult_div_mod (PLUS expr_arith_mult_div_mod { System.out.println("Operator: +"); } |
-                               MINUS expr_arith_mult_div_mod { System.out.println("Operator: -"); })*
+    : expr_arith_mult_div_mod expr_arith_plus_minus_
+    ;
+
+expr_arith_plus_minus_
+    : PLUS expr_arith_mult_div_mod expr_arith_plus_minus_ { System.out.println("Operator: +"); }
+    | MINUS expr_arith_mult_div_mod expr_arith_plus_minus_ { System.out.println("Operator: -"); }
+    | // epsilon
     ;
 
 expr_arith_mult_div_mod
-    : expr_unary_plus_minus_not (MULT expr_unary_plus_minus_not { System.out.println("Operator: *"); } |
-                                 DIV expr_unary_plus_minus_not { System.out.println("Operator: /"); } |
-                                 MOD expr_unary_plus_minus_not { System.out.println("Operator: %"); })*
+    : expr_unary_plus_minus_not expr_arith_mult_div_mod_
+    ;
+
+expr_arith_mult_div_mod_
+    : MULT expr_unary_plus_minus_not expr_arith_mult_div_mod_ { System.out.println("Operator: *"); }
+    | DIV expr_unary_plus_minus_not expr_arith_mult_div_mod_ { System.out.println("Operator: /"); }
+    | MOD expr_unary_plus_minus_not expr_arith_mult_div_mod_ { System.out.println("Operator: %"); }
+    | // epsilon
     ;
 
 expr_unary_plus_minus_not
