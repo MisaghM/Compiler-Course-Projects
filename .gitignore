@@ -31,3 +31,6 @@ replay_pid*
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
+
+# antlr
+.antlr
