@@ -1,45 +1,68 @@
 grammar LogicPL;
 
-@header{
-import ast.node.*;
-import ast.node.expression.*;
-import ast.node.statement.*;
-import ast.node.declaration.*;
-import ast.node.expression.values.*;
-import ast.node.expression.operators.*;
-import ast.type.primitiveType.*;
-import ast.type.*;
+@header {
+    import ast.node.*;
+    import ast.node.expression.*;
+    import ast.node.statement.*;
+    import ast.node.declaration.*;
+    import ast.node.expression.values.*;
+    import ast.node.expression.operators.*;
+    import ast.type.primitiveType.*;
+    import ast.type.*;
 }
 
-program returns[Program p]:
-    {$p = new Program(); $p.setLine(0);}
-    (f = functionDec {$p.addFunc($f.functionDeclaration);})*
-    main = mainBlock {$p.setMain($main.main) ;}
+program returns [Program p]:
+    {
+        $p = new Program();
+        $p.setLine(0);
+    }
+    (f=functionDec { $p.addFunc($f.functionDeclaration); })*
+    main=mainBlock { $p.setMain($main.main); }
     ;
 
-functionDec returns[FuncDeclaration functionDeclaration]:
-    {ArrayList<ArgDeclaration> args = new ArrayList<>();
-     ArrayList<Statement> statements = new ArrayList<>();}
-    FUNCTION name = identifier
-    LPAR (arg1 = functionVarDec {args.add($arg1.argDeclaration);} (COMMA arg = functionVarDec {args.add($arg.argDeclaration);})*)? RPAR COLON returnType = type
-    LBRACE ((stmt = statement {statements.add($stmt.statementRet);})+) RBRACE
-    {$functionDeclaration = new FuncDeclaration($name.identifierRet, $returnType.typeRet, args, statements); $functionDeclaration.setLine($name.identifierRet.getLine());}
+functionDec returns [FuncDeclaration functionDeclaration]:
+    {
+        ArrayList<ArgDeclaration> args = new ArrayList<>();
+        ArrayList<Statement> statements = new ArrayList<>();
+    }
+    FUNCTION name=identifier LPAR
+    (arg1=functionVarDec { args.add($arg1.argDeclaration); } (COMMA arg=functionVarDec { args.add($arg.argDeclaration); })*)?
+    RPAR COLON returnType=type LBRACE
+    (stmt=statement { statements.add($stmt.statementRet); })+
+    RBRACE
+    {
+        $functionDeclaration = new FuncDeclaration($name.identifierRet, $returnType.typeRet, args, statements);
+        $functionDeclaration.setLine($name.identifierRet.getLine());
+    }
     ;
 
 functionVarDec returns [ArgDeclaration argDeclaration]:
-    t = type arg_iden = identifier {$argDeclaration = new ArgDeclaration($arg_iden.identifierRet, $t.typeRet); $argDeclaration.setLine($arg_iden.identifierRet.getLine());}
+    t=type argIden=identifier
+    {
+        $argDeclaration = new ArgDeclaration($argIden.identifierRet, $t.typeRet);
+        $argDeclaration.setLine($argIden.identifierRet.getLine());
+    }
     ;
 
 mainBlock returns [MainDeclaration main]:
-    {ArrayList<Statement> mainStmts = new ArrayList<>();}
-    m = MAIN LBRACE (s = statement {mainStmts.add($s.statementRet);})+ RBRACE
-    {$main = new MainDeclaration(mainStmts); $main.setLine($m.getLine());}
+    {
+        ArrayList<Statement> mainStmts = new ArrayList<>();
+    }
+    m=MAIN LBRACE (s=statement { mainStmts.add($s.statementRet); })+ RBRACE
+    {
+        $main = new MainDeclaration(mainStmts);
+        $main.setLine($m.getLine());
+    }
     ;
 
 statement:
-    assignSmt | ( predicate SEMICOLON )
-    | implication | returnSmt
-    | printSmt | forLoop | localVarDeclaration
+    assignSmt
+    | predicate SEMICOLON
+    | implication
+    | returnSmt
+    | printSmt
+    | forLoop
+    | localVarDeclaration
     ;
 
 assignSmt:
@@ -47,21 +70,21 @@ assignSmt:
     ;
 
 variable:
-    identifier | identifier LBRACKET expression RBRACKET
+    identifier
+    | identifier LBRACKET expression RBRACKET
     ;
 
 localVarDeclaration:
-     varDeclaration
+    varDeclaration
     | arrayDeclaration
     ;
 
 varDeclaration:
-    type identifier (ASSIGN expression )? SEMICOLON
+    type identifier (ASSIGN expression)? SEMICOLON
     ;
 
 arrayDeclaration:
-    type LBRACKET INT_NUMBER RBRACKET identifier
-    (arrayInitialValue )? SEMICOLON
+    type LBRACKET INT_NUMBER RBRACKET identifier (arrayInitialValue)? SEMICOLON
     ;
 
 arrayInitialValue:
@@ -69,7 +92,7 @@ arrayInitialValue:
     ;
 
 arrayList:
-    LBRACKET ( value | identifier ) (COMMA ( value | identifier ))* RBRACKET
+    LBRACKET (value | identifier) (COMMA (value | identifier))* RBRACKET
     ;
 
 printSmt:
@@ -82,25 +105,24 @@ printExpr:
     ;
 
 query:
-      queryType1
-     | queryType2
+    queryType1
+    | queryType2
     ;
 
 queryType1:
-    LBRACKET QUARYMARK predicateIdentifier LPAR variable RPAR RBRACKET
+    LBRACKET QUERYMARK predicateIdentifier LPAR variable RPAR RBRACKET
     ;
 
 queryType2:
-    LBRACKET predicateIdentifier LPAR QUARYMARK RPAR RBRACKET
+    LBRACKET predicateIdentifier LPAR QUERYMARK RPAR RBRACKET
     ;
 
 returnSmt:
-    RETURN (value  | identifier)? SEMICOLON
+    RETURN (value | identifier)? SEMICOLON
     ;
 
 forLoop:
-    FOR LPAR identifier COLON identifier RPAR
-    LBRACE ((statement)*) RBRACE
+    FOR LPAR identifier COLON identifier RPAR LBRACE ((statement)*) RBRACE
     ;
 
 predicate:
@@ -117,7 +139,7 @@ expression:
 
 expression2:
     OR andExpr expression2
-    |
+    | // epsilon
     ;
 
 andExpr:
@@ -126,7 +148,7 @@ andExpr:
 
 andExpr2:
     AND eqExpr andExpr2
-    |
+    | // epsilon
     ;
 
 eqExpr:
@@ -134,8 +156,8 @@ eqExpr:
     ;
 
 eqExpr2:
-    ( EQ | NEQ ) compExpr eqExpr2
-    |
+    (EQ | NEQ) compExpr eqExpr2
+    | // epsilon
     ;
 
 compExpr:
@@ -143,8 +165,8 @@ compExpr:
     ;
 
 compExpr2:
-    ( LT | LTE | GT | GTE) additive compExpr2
-    |
+    (LT | LTE | GT | GTE) additive compExpr2
+    | // epsilon
     ;
 
 additive:
@@ -152,8 +174,8 @@ additive:
     ;
 
 additive2:
-    ( PLUS | MINUS ) multicative additive2
-    |
+    (PLUS | MINUS) multicative additive2
+    | // epsilon
     ;
 
 multicative:
@@ -161,19 +183,21 @@ multicative:
     ;
 
 multicative2:
-    ( MULT | MOD | DIV ) unary multicative2
-    |
+    (MULT | MOD | DIV) unary multicative2
+    | // epsilon
     ;
 
 unary:
     other
-    |
-     ( PLUS | MINUS | NOT ) other
+    | (PLUS | MINUS | NOT) other
     ;
 
 other:
-    LPAR expression RPAR | variable | value
-    | queryType1 | functionCall
+    LPAR expression RPAR
+    | variable
+    | value
+    | queryType1
+    | functionCall
     ;
 
 functionCall:
@@ -207,51 +231,48 @@ type:
     ;
 
 
+FUNCTION: 'function';
+BOOLEAN:  'boolean';
+INT:      'int';
+FLOAT:    'float';
+MAIN:     'main';
+PRINT:    'print';
+RETURN:   'return';
+FOR:      'for';
+TRUE:     'true';
+FALSE:    'false';
 
-
-FUNCTION : 'function';
-BOOLEAN : 'boolean';
-INT : 'int';
-FLOAT: 'float';
-MAIN: 'main';
-PRINT: 'print';
-RETURN: 'return';
-FOR: 'for';
-TRUE: 'true';
-FALSE: 'false';
-
-LPAR: '(';
-RPAR: ')';
-COLON: ':';
-COMMA: ',';
-LBRACE: '{';
-RBRACE: '}';
+LPAR:      '(';
+RPAR:      ')';
+COLON:     ':';
+COMMA:     ',';
+LBRACE:    '{';
+RBRACE:    '}';
 SEMICOLON: ';';
-ASSIGN: '=';
-LBRACKET: '[';
-RBRACKET: ']';
-QUARYMARK: '?';
-ARROW: '=>';
-OR: '||';
-AND: '&&';
-EQ: '==';
-GT: '>';
-LT: '<';
-GTE: '>=';
-LTE: '<=';
-PLUS: '+';
-MINUS: '-';
-MULT: '*';
-DIV: '/';
-MOD: '%';
-NEQ: '!=';
-NOT: '!';
+ASSIGN:    '=';
+LBRACKET:  '[';
+RBRACKET:  ']';
+QUERYMARK: '?';
+ARROW:     '=>';
+OR:        '||';
+AND:       '&&';
+EQ:        '==';
+GT:        '>';
+LT:        '<';
+GTE:       '>=';
+LTE:       '<=';
+PLUS:      '+';
+MINUS:     '-';
+MULT:      '*';
+DIV:       '/';
+MOD:       '%';
+NEQ:       '!=';
+NOT:       '!';
 
+WS: [ \t\r\n]+ -> skip;
+COMMENT: '#' ~[\r\n]* -> skip;
 
-WS : [ \t\r\n]+ -> skip ;
-COMMENT : '#' ~[\r\n]* -> skip ;
-
-IDENTIFIER : [a-z][a-zA-Z0-9_]* ;
-PREDICATE_IDENTIFIER : [A-Z][a-zA-Z0-9]* ;
-INT_NUMBER : [0-9]+;
+IDENTIFIER: [a-z][a-zA-Z0-9_]*;
+PREDICATE_IDENTIFIER: [A-Z][a-zA-Z0-9]*;
+INT_NUMBER: [0-9]+;
 FLOAT_NUMBER: ([0-9]*[.])?[0-9]+;
