@@ -27,7 +27,7 @@ public class NameAnalyzer extends Visitor<Void> {
         }
 
         for (var stmt : program.getMain().getMainStatements()) {
-            if(stmt instanceof VarDecStmt) {
+            if (stmt instanceof VarDecStmt) {
                 stmt.accept(this);
             }
         }
@@ -42,7 +42,11 @@ public class NameAnalyzer extends Visitor<Void> {
         var functionSymbolTable = new SymbolTable(SymbolTable.top, funcDeclaration.getName().getName());
         functionItem.setFunctionSymbolTable(functionSymbolTable);
 
-        // ToDo
+        try {
+            SymbolTable.top.put(functionItem);
+        } catch (ItemAlreadyExistsException e) {
+            nameErrors.add(new FunctionRedefinition(funcDeclaration.getName().getLine(), funcDeclaration.getName().getName()));
+        }
 
 
         for (ArgDeclaration varDeclaration : funcDeclaration.getArgs()) {
@@ -50,7 +54,7 @@ public class NameAnalyzer extends Visitor<Void> {
         }
 
         for (var stmt : funcDeclaration.getStatements()) {
-            if(stmt instanceof VarDecStmt) {
+            if (stmt instanceof VarDecStmt) {
                 stmt.accept(this);
             }
         }
@@ -63,7 +67,11 @@ public class NameAnalyzer extends Visitor<Void> {
     public Void visit(VarDecStmt varDeclaration) {
         var variableItem = new VariableItem(varDeclaration.getIdentifier().getName(), varDeclaration.getType());
 
-        // ToDo
+        try {
+            SymbolTable.top.put(variableItem);
+        } catch (ItemAlreadyExistsException e) {
+            nameErrors.add(new VariableRedefinition(varDeclaration.getIdentifier().getLine(), varDeclaration.getIdentifier().getName()));
+        }
 
         return null;
     }

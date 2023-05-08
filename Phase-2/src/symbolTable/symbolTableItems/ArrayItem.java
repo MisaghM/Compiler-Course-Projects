@@ -51,6 +51,6 @@ public class ArrayItem extends SymbolTableItem {
 
     @Override
     public String getKey() {
-        return VariableItem.STARTKEY + this.name;
+        return ArrayItem.STARTKEY + this.name;
     }
 }
