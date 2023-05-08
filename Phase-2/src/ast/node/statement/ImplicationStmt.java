@@ -10,21 +10,21 @@ import java.util.ArrayList;
 //Line -> ARROW
 public class ImplicationStmt extends Statement {
     private Expression condition;
-    private ArrayList<Statement> resaultStmts =  new ArrayList<>();
+    private ArrayList<Statement> resultStmts =  new ArrayList<>();
 
-    public ImplicationStmt(Expression condition, ArrayList<Statement> resaultStmts) {
+    public ImplicationStmt(Expression condition, ArrayList<Statement> resultStmts) {
         this.condition = condition;
-        this.resaultStmts = resaultStmts;
+        this.resultStmts = resultStmts;
     }
 
     public void setStatements(ArrayList<Statement> statements) {
-        this.resaultStmts = statements;
+        this.resultStmts = statements;
     }
     public ArrayList<Statement> getStatements() {
-        return resaultStmts;
+        return resultStmts;
     }
     public void addStatements(Statement statement) {
-        resaultStmts.add(statement);
+        resultStmts.add(statement);
     }
 
     public Expression getCondition() {
