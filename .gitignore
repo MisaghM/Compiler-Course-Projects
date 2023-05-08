@@ -27,10 +27,10 @@ replay_pid*
 .vscode/
 
 # Intellij
-.idea/
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 
 # antlr
 .antlr
+gen/
