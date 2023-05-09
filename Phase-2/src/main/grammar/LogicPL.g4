@@ -55,179 +55,411 @@ mainBlock returns [MainDeclaration main]:
     }
     ;
 
-statement:
-    assignSmt
-    | predicate SEMICOLON
-    | implication
-    | returnSmt
-    | printSmt
-    | forLoop
-    | localVarDeclaration
+statement returns [Statement statementRet]:
+    assignStmt=assignSmt             { $statementRet = $assignStmt.assignSmtRet; }
+    | predStmt=predicate SEMICOLON   { $statementRet = $predStmt.predicateRet; }
+    | implStmt=implication           { $statementRet = $implStmt.implicationRet; }
+    | retStmt=returnSmt              { $statementRet = $retStmt.returnRet; }
+    | printStmt=printSmt             { $statementRet = $printStmt.printRet; }
+    | forStmt=forLoop                { $statementRet = $forStmt.forloopRet; }
+    | vardecStmt=localVarDeclaration { $statementRet = $vardecStmt.varDecRet; }
     ;
 
-assignSmt:
-    variable ASSIGN expression SEMICOLON
+assignSmt returns [AssignStmt assignSmtRet]:
+    lval=variable ASSIGN rval=expression SEMICOLON
+    {
+        $assignSmtRet = new AssignStmt($lval.variableRet, $rval.exprRet);
+        $assignSmtRet.setLine($lval.variableRet.getLine());
+    }
     ;
 
-variable:
-    identifier
-    | identifier LBRACKET expression RBRACKET
+variable returns [Variable variableRet]:
+    idn=identifier
+    {
+        $variableRet = $idn.identifierRet;
+    }
+    | arrIdn=identifier LBRACKET arrIdx=expression RBRACKET
+    {
+        $variableRet = new ArrayAccess($arrIdn.identifierRet.getName(), $arrIdx.exprRet);
+        $variableRet.setLine($arrIdn.identifierRet.getLine());
+    }
     ;
 
-localVarDeclaration:
-    varDeclaration
-    | arrayDeclaration
+localVarDeclaration returns [Statement varDecRet]:
+    vd=varDeclaration        { $varDecRet = $vd.varDecRet; }
+    | vdArr=arrayDeclaration { $varDecRet = $vdArr.arrDecRet; }
     ;
 
-varDeclaration:
-    type identifier (ASSIGN expression)? SEMICOLON
+varDeclaration returns [VarDecStmt varDecRet]:
+    t=type idn=identifier
+    {
+        $varDecRet = new VarDecStmt($idn.identifierRet, $t.typeRet);
+        $varDecRet.setLine($idn.identifierRet.getLine());
+    }
+    (ASSIGN e=expression { $varDecRet.setInitialExpression($e.exprRet); })? SEMICOLON
     ;
 
-arrayDeclaration:
-    type LBRACKET INT_NUMBER RBRACKET identifier (arrayInitialValue)? SEMICOLON
+arrayDeclaration returns [ArrayDecStmt arrDecRet]:
+    t=type b=LBRACKET size=INT_NUMBER RBRACKET idn=identifier
+    {
+        $arrDecRet = new ArrayDecStmt($idn.identifierRet, $t.typeRet, $size.int);
+        $arrDecRet.setLine($b.getLine());
+    }
+    (arrInit=arrayInitialValue[$arrDecRet])? SEMICOLON
     ;
 
-arrayInitialValue:
-    ASSIGN arrayList
+arrayInitialValue [ArrayDecStmt arrDecInp]:
+    ASSIGN arrayList[$arrDecInp]
     ;
 
-arrayList:
-    LBRACKET (value | identifier) (COMMA (value | identifier))* RBRACKET
+arrayList [ArrayDecStmt arrDecInp]:
+    {
+        ArrayList<Expression> args = new ArrayList<>();
+    }
+    LBRACKET (v=value { args.add($v.valueRet); } | idn=identifier { args.add($idn.identifierRet); })
+    (COMMA   (v=value { args.add($v.valueRet); } | idn=identifier { args.add($idn.identifierRet); }))* RBRACKET
+    {
+        $arrDecInp.setInitialValues(args);
+    }
     ;
 
-printSmt:
-    PRINT LPAR printExpr RPAR SEMICOLON
+printSmt returns [PrintStmt printRet]:
+    p=PRINT LPAR e=printExpr RPAR SEMICOLON
+    {
+        $printRet = new PrintStmt($e.printExprRet);
+        $printRet.setLine($p.getLine());
+    }
     ;
 
-printExpr:
-    variable
-    | query
+printExpr returns [Expression printExprRet]:
+    v=variable { $printExprRet = $v.variableRet; }
+    | q=query  { $printExprRet = $q.queryRet; }
     ;
 
-query:
-    queryType1
-    | queryType2
+query returns [QueryExpression queryRet]:
+    t1=queryType1   { $queryRet = $t1.queryRet; }
+    | t2=queryType2 { $queryRet = $t2.queryRet; }
     ;
 
-queryType1:
-    LBRACKET QUERYMARK predicateIdentifier LPAR variable RPAR RBRACKET
+queryType1 returns [QueryExpression queryRet]:
+    line=LBRACKET QUERYMARK predIdn=predicateIdentifier LPAR var=variable RPAR RBRACKET
+    {
+        $queryRet = new QueryExpression($predIdn.identifierRet);
+        $queryRet.setVar($var.variableRet);
+        $queryRet.setLine($line.getLine());
+    }
     ;
 
-queryType2:
-    LBRACKET predicateIdentifier LPAR QUERYMARK RPAR RBRACKET
+queryType2 returns [QueryExpression queryRet]:
+    line=LBRACKET predIdn=predicateIdentifier LPAR QUERYMARK RPAR RBRACKET
+    {
+        $queryRet = new QueryExpression($predIdn.identifierRet);
+        $queryRet.setVar(null);
+        $queryRet.setLine($line.getLine());
+    }
     ;
 
-returnSmt:
-    RETURN (value | identifier)? SEMICOLON
+returnSmt returns [ReturnStmt returnRet]:
+    line=RETURN
+    ( v=value        { $returnRet = new ReturnStmt($v.valueRet); }
+    | idn=identifier { $returnRet = new ReturnStmt($idn.identifierRet); })?
+    SEMICOLON
+    {
+        if ($returnRet == null) {
+            $returnRet = new ReturnStmt(null);
+        }
+        $returnRet.setLine($line.getLine());
+    }
     ;
 
-forLoop:
-    FOR LPAR identifier COLON identifier RPAR LBRACE ((statement)*) RBRACE
+forLoop returns [ForloopStmt forloopRet]:
+    {
+        ArrayList<Statement> stmts = new ArrayList<>();
+    }
+    line=FOR LPAR name=identifier COLON target=identifier RPAR LBRACE (stmt=statement { stmts.add($stmt.statementRet); })* RBRACE
+    {
+        $forloopRet = new ForloopStmt($name.identifierRet, $target.identifierRet, stmts);
+        $forloopRet.setLine($line.getLine());
+    }
     ;
 
-predicate:
-    predicateIdentifier LPAR variable RPAR
+predicate returns [PredicateStmt predicateRet]:
+    name=predicateIdentifier LPAR var=variable RPAR
+    {
+        $predicateRet = new PredicateStmt($name.identifierRet, $var.variableRet);
+        $predicateRet.setLine($name.identifierRet.getLine());
+    }
     ;
 
-implication:
-    LPAR expression RPAR ARROW LPAR ((statement)+) RPAR
+implication returns [ImplicationStmt implicationRet]:
+    {
+        ArrayList<Statement> stmts = new ArrayList<>();
+    }
+    line=LPAR expr=expression RPAR ARROW LPAR (stmt=statement { stmts.add($stmt.statementRet); })+ RPAR
+    {
+        $implicationRet = new ImplicationStmt($expr.exprRet, stmts);
+        $implicationRet.setLine($line.getLine());
+    }
     ;
 
-expression:
-    andExpr expression2
+expression returns [Expression exprRet]:
+    left=andExpr right=expression2
+    {
+        if ($right.expr2Ret != null) {
+            $exprRet = new BinaryExpression($left.exprRet, $right.expr2Ret.getRight(), $right.expr2Ret.getBinaryOperator());
+            $exprRet.setLine($right.expr2Ret.getLine());
+        }
+        else {
+            $exprRet = $left.exprRet;
+        }
+    }
     ;
 
-expression2:
-    OR andExpr expression2
-    | // epsilon
+expression2 returns [BinaryExpression expr2Ret]:
+    op=OR { BinaryOperator opEnum = BinaryOperator.or; }
+    left=andExpr right=expression2
+    {
+        if ($right.expr2Ret != null) {
+            BinaryExpression binExpr = new BinaryExpression($left.exprRet, $right.expr2Ret.getRight(), $right.expr2Ret.getBinaryOperator());
+            binExpr.setLine($right.expr2Ret.getLine());
+            $expr2Ret = new BinaryExpression(null, binExpr, opEnum);
+        }
+        else {
+            $expr2Ret = new BinaryExpression(null, $left.exprRet, opEnum);
+        }
+        $expr2Ret.setLine($op.getLine());
+    }
+    | { $expr2Ret = null; } // epsilon
     ;
 
-andExpr:
-    eqExpr andExpr2
+andExpr returns [Expression exprRet]:
+    left=eqExpr right=andExpr2
+    {
+        if ($right.expr2Ret != null) {
+            $exprRet = new BinaryExpression($left.exprRet, $right.expr2Ret.getRight(), $right.expr2Ret.getBinaryOperator());
+            $exprRet.setLine($right.expr2Ret.getLine());
+        }
+        else {
+            $exprRet = $left.exprRet;
+        }
+    }
     ;
 
-andExpr2:
-    AND eqExpr andExpr2
-    | // epsilon
+andExpr2 returns [BinaryExpression expr2Ret]:
+    op=AND { BinaryOperator opEnum = BinaryOperator.and; }
+    left=eqExpr right=andExpr2
+    {
+        if ($right.expr2Ret != null) {
+            BinaryExpression binExpr = new BinaryExpression($left.exprRet, $right.expr2Ret.getRight(), $right.expr2Ret.getBinaryOperator());
+            binExpr.setLine($right.expr2Ret.getLine());
+            $expr2Ret = new BinaryExpression(null, binExpr, opEnum);
+        }
+        else {
+            $expr2Ret = new BinaryExpression(null, $left.exprRet, opEnum);
+        }
+        $expr2Ret.setLine($op.getLine());
+    }
+    | { $expr2Ret = null; } // epsilon
     ;
 
-eqExpr:
-    compExpr eqExpr2
+eqExpr returns [Expression exprRet]:
+    left=compExpr right=eqExpr2
+    {
+        if ($right.expr2Ret != null) {
+            $exprRet = new BinaryExpression($left.exprRet, $right.expr2Ret.getRight(), $right.expr2Ret.getBinaryOperator());
+            $exprRet.setLine($right.expr2Ret.getLine());
+        }
+        else {
+            $exprRet = $left.exprRet;
+        }
+    }
     ;
 
-eqExpr2:
-    (EQ | NEQ) compExpr eqExpr2
-    | // epsilon
+eqExpr2 returns [BinaryExpression expr2Ret]:
+    {
+        BinaryOperator opEnum;
+    }
+    ( op=EQ  { opEnum = BinaryOperator.eq; }
+    | op=NEQ { opEnum = BinaryOperator.neq; })
+    left=compExpr right=eqExpr2
+    {
+        if ($right.expr2Ret != null) {
+            BinaryExpression binExpr = new BinaryExpression($left.exprRet, $right.expr2Ret.getRight(), $right.expr2Ret.getBinaryOperator());
+            binExpr.setLine($right.expr2Ret.getLine());
+            $expr2Ret = new BinaryExpression(null, binExpr, opEnum);
+        }
+        else {
+            $expr2Ret = new BinaryExpression(null, $left.exprRet, opEnum);
+        }
+        $expr2Ret.setLine($op.getLine());
+    }
+    | { $expr2Ret = null; } // epsilon
     ;
 
-compExpr:
-    additive compExpr2
+compExpr returns [Expression exprRet]:
+    left=additive right=compExpr2
+    {
+        if ($right.expr2Ret != null) {
+            $exprRet = new BinaryExpression($left.exprRet, $right.expr2Ret.getRight(), $right.expr2Ret.getBinaryOperator());
+            $exprRet.setLine($right.expr2Ret.getLine());
+        }
+        else {
+            $exprRet = $left.exprRet;
+        }
+    }
     ;
 
-compExpr2:
-    (LT | LTE | GT | GTE) additive compExpr2
-    | // epsilon
+compExpr2 returns [BinaryExpression expr2Ret]:
+    {
+        BinaryOperator opEnum;
+    }
+    ( op=LT  { opEnum = BinaryOperator.lt; }
+    | op=LTE { opEnum = BinaryOperator.lte; }
+    | op=GT  { opEnum = BinaryOperator.gt; }
+    | op=GTE { opEnum = BinaryOperator.gte; })
+    left=additive right=compExpr2
+    {
+        if ($right.expr2Ret != null) {
+            BinaryExpression binExpr = new BinaryExpression($left.exprRet, $right.expr2Ret.getRight(), $right.expr2Ret.getBinaryOperator());
+            binExpr.setLine($right.expr2Ret.getLine());
+            $expr2Ret = new BinaryExpression(null, binExpr, opEnum);
+        }
+        else {
+            $expr2Ret = new BinaryExpression(null, $left.exprRet, opEnum);
+        }
+        $expr2Ret.setLine($op.getLine());
+    }
+    | { $expr2Ret = null; } // epsilon
     ;
 
-additive:
-    multicative additive2
+additive returns [Expression exprRet]:
+    left=multicative right=additive2
+    {
+        if ($right.expr2Ret != null) {
+            $exprRet = new BinaryExpression($left.exprRet, $right.expr2Ret.getRight(), $right.expr2Ret.getBinaryOperator());
+            $exprRet.setLine($right.expr2Ret.getLine());
+        }
+        else {
+            $exprRet = $left.exprRet;
+        }
+    }
     ;
 
-additive2:
-    (PLUS | MINUS) multicative additive2
-    | // epsilon
+additive2 returns [BinaryExpression expr2Ret]:
+    {
+        BinaryOperator opEnum;
+    }
+    ( op=PLUS  { opEnum = BinaryOperator.add; }
+    | op=MINUS { opEnum = BinaryOperator.sub; })
+    left=multicative right=additive2
+    {
+        if ($right.expr2Ret != null) {
+            BinaryExpression binExpr = new BinaryExpression($left.exprRet, $right.expr2Ret.getRight(), $right.expr2Ret.getBinaryOperator());
+            binExpr.setLine($right.expr2Ret.getLine());
+            $expr2Ret = new BinaryExpression(null, binExpr, opEnum);
+        }
+        else {
+            $expr2Ret = new BinaryExpression(null, $left.exprRet, opEnum);
+        }
+        $expr2Ret.setLine($op.getLine());
+    }
+    | { $expr2Ret = null; } // epsilon
     ;
 
-multicative:
-    unary multicative2
+multicative returns [Expression exprRet]:
+    left=unary right=multicative2
+    {
+        if ($right.expr2Ret != null) {
+            $exprRet = new BinaryExpression($left.exprRet, $right.expr2Ret.getRight(), $right.expr2Ret.getBinaryOperator());
+            $exprRet.setLine($right.expr2Ret.getLine());
+        }
+        else {
+            $exprRet = $left.exprRet;
+        }
+    }
     ;
 
-multicative2:
-    (MULT | MOD | DIV) unary multicative2
-    | // epsilon
+multicative2 returns [BinaryExpression expr2Ret]:
+    {
+        BinaryOperator opEnum;
+    }
+    ( op=MULT { opEnum = BinaryOperator.mult; }
+    | op=MOD  { opEnum = BinaryOperator.mod; }
+    | op=DIV  { opEnum = BinaryOperator.div; })
+    left=unary right=multicative2
+    {
+        if ($right.expr2Ret != null) {
+            BinaryExpression binExpr = new BinaryExpression($left.exprRet, $right.expr2Ret.getRight(), $right.expr2Ret.getBinaryOperator());
+            binExpr.setLine($right.expr2Ret.getLine());
+            $expr2Ret = new BinaryExpression(null, binExpr, opEnum);
+        }
+        else {
+            $expr2Ret = new BinaryExpression(null, $left.exprRet, opEnum);
+        }
+        $expr2Ret.setLine($op.getLine());
+    }
+    | { $expr2Ret = null; } // epsilon
     ;
 
-unary:
-    other
-    | (PLUS | MINUS | NOT) other
+unary returns [Expression exprRet]:
+    ot=other { $exprRet = $ot.exprRet; }
+    | { UnaryOperator uop = UnaryOperator.not; }
+    (
+        PLUS { uop = UnaryOperator.plus; } |
+        MINUS { uop = UnaryOperator.minus; } |
+        NOT { uop = UnaryOperator.not; }
+    ) ot=other
+    {
+        $exprRet = new UnaryExpression(uop, $ot.exprRet);
+        $exprRet.setLine($ot.exprRet.getLine());
+    }
     ;
 
-other:
-    LPAR expression RPAR
-    | variable
-    | value
-    | queryType1
-    | functionCall
+other returns [Expression exprRet]:
+    LPAR expr=expression RPAR { $exprRet = $expr.exprRet; }
+    | exprVar=variable        { $exprRet = $exprVar.variableRet; }
+    | exprVal=value           { $exprRet = $exprVal.valueRet; }
+    | exprQuery=queryType1    { $exprRet = $exprQuery.queryRet; }
+    | exprFunc=functionCall   { $exprRet = $exprFunc.functionCallRet; }
     ;
 
-functionCall:
-    identifier LPAR (expression (COMMA expression)*)? RPAR
+functionCall returns [FunctionCall functionCallRet]:
+    {
+        ArrayList<Expression> exprs = new ArrayList<>();
+    }
+    name=identifier LPAR
+    (e1=expression { exprs.add($e1.exprRet); } (COMMA e=expression { exprs.add($e.exprRet); })*)?
+    RPAR
+    {
+        $functionCallRet = new FunctionCall(exprs, $name.identifierRet);
+        $functionCallRet.setLine($name.identifierRet.getLine());
+    }
     ;
 
-value:
-    numericValue
-    | TRUE
-    | FALSE
-    | MINUS numericValue
+value returns [Value valueRet]:
+    n=numericValue         { $valueRet = $n.valueRet; }
+    | t=TRUE               { $valueRet = new BooleanValue(true);  $valueRet.setLine($t.getLine()); }
+    | f=FALSE              { $valueRet = new BooleanValue(false); $valueRet.setLine($f.getLine()); }
+    | MINUS m=numericValue { $m.valueRet.negateConstant(); $valueRet = $m.valueRet; }
     ;
 
-numericValue:
-    INT_NUMBER
-    | FLOAT_NUMBER
+numericValue returns [Value valueRet]:
+    i=INT_NUMBER     { $valueRet = new IntValue($i.int);                      $valueRet.setLine($i.getLine()); }
+    | f=FLOAT_NUMBER { $valueRet = new FloatValue(Float.parseFloat($f.text)); $valueRet.setLine($f.getLine()); }
     ;
 
-identifier:
-    IDENTIFIER
+identifier returns [Identifier identifierRet]:
+    idn=IDENTIFIER           { $identifierRet = new Identifier($idn.text); $identifierRet.setLine($idn.getLine()); }
     ;
 
-predicateIdentifier:
-    PREDICATE_IDENTIFIER
+predicateIdentifier returns [Identifier identifierRet]:
+    idn=PREDICATE_IDENTIFIER { $identifierRet = new Identifier($idn.text); $identifierRet.setLine($idn.getLine()); }
     ;
 
-type:
-    BOOLEAN
-    | INT
-    | FLOAT
+type returns [Type typeRet]:
+    b=BOOLEAN { $typeRet = new BooleanType(); }
+    | i=INT   { $typeRet = new IntType(); }
+    | f=FLOAT { $typeRet = new FloatType(); }
     ;
 
 
