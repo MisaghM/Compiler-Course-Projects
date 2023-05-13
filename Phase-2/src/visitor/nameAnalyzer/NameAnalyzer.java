@@ -43,10 +43,15 @@ public class NameAnalyzer extends Visitor<Void> {
         functionItem.setFunctionSymbolTable(functionSymbolTable);
         SymbolTable.push(functionSymbolTable);
 
-        try {
-            SymbolTable.top.put(functionItem);
-        } catch (ItemAlreadyExistsException e) {
-            nameErrors.add(new FunctionRedefinition(funcDeclaration.getName().getLine(), funcDeclaration.getName().getName()));
+        while (true) {
+            try {
+                SymbolTable.top.put(functionItem);
+                break;
+            } catch (ItemAlreadyExistsException e) {
+                if (!funcDeclaration.getName().getName().endsWith("@"))
+                    nameErrors.add(new FunctionRedefinition(funcDeclaration.getName().getLine(), funcDeclaration.getName().getName()));
+                funcDeclaration.getName().setName(funcDeclaration.getName().getName() + "@");
+            }
         }
 
 
@@ -68,10 +73,15 @@ public class NameAnalyzer extends Visitor<Void> {
     public Void visit(VarDecStmt varDeclaration) {
         var variableItem = new VariableItem(varDeclaration.getIdentifier().getName(), varDeclaration.getType());
 
-        try {
-            SymbolTable.top.put(variableItem);
-        } catch (ItemAlreadyExistsException e) {
-            nameErrors.add(new VariableRedefinition(varDeclaration.getIdentifier().getLine(), varDeclaration.getIdentifier().getName()));
+        while (true) {
+            try {
+                SymbolTable.top.put(variableItem);
+                break;
+            } catch (ItemAlreadyExistsException e) {
+                if (!varDeclaration.getIdentifier().getName().endsWith("@"))
+                    nameErrors.add(new VariableRedefinition(varDeclaration.getIdentifier().getLine(), varDeclaration.getIdentifier().getName()));
+                varDeclaration.getIdentifier().setName(varDeclaration.getIdentifier().getName() + "@");
+            }
         }
 
         return null;
