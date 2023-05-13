@@ -25,14 +25,14 @@ functionDec returns [FuncDeclaration functionDeclaration]:
         ArrayList<ArgDeclaration> args = new ArrayList<>();
         ArrayList<Statement> statements = new ArrayList<>();
     }
-    FUNCTION name=identifier LPAR
+    func = FUNCTION name=identifier LPAR
     (arg1=functionVarDec { args.add($arg1.argDeclaration); } (COMMA arg=functionVarDec { args.add($arg.argDeclaration); })*)?
     RPAR COLON returnType=type LBRACE
     (stmt=statement { statements.add($stmt.statementRet); })+
     RBRACE
     {
         $functionDeclaration = new FuncDeclaration($name.identifierRet, $returnType.typeRet, args, statements);
-        $functionDeclaration.setLine($name.identifierRet.getLine());
+        $functionDeclaration.setLine($func.getLine());
     }
     ;
 
@@ -66,10 +66,10 @@ statement returns [Statement statementRet]:
     ;
 
 assignSmt returns [AssignStmt assignSmtRet]:
-    lval=variable ASSIGN rval=expression SEMICOLON
+    lval=variable a=ASSIGN rval=expression SEMICOLON
     {
         $assignSmtRet = new AssignStmt($lval.variableRet, $rval.exprRet);
-        $assignSmtRet.setLine($lval.variableRet.getLine());
+        $assignSmtRet.setLine($a.getLine());
     }
     ;
 
@@ -103,7 +103,7 @@ arrayDeclaration returns [ArrayDecStmt arrDecRet]:
     t=type b=LBRACKET size=INT_NUMBER RBRACKET idn=identifier
     {
         $arrDecRet = new ArrayDecStmt($idn.identifierRet, $t.typeRet, $size.int);
-        $arrDecRet.setLine($b.getLine());
+        $arrDecRet.setLine($idn.identifierRet.getLine());
     }
     (arrInit=arrayInitialValue[$arrDecRet])? SEMICOLON
     ;
@@ -142,7 +142,7 @@ query returns [QueryExpression queryRet]:
     ;
 
 queryType1 returns [QueryExpression queryRet]:
-    line=LBRACKET QUERYMARK predIdn=predicateIdentifier LPAR var=variable RPAR RBRACKET
+    LBRACKET line=QUERYMARK predIdn=predicateIdentifier LPAR var=variable RPAR RBRACKET
     {
         $queryRet = new QueryExpression($predIdn.identifierRet);
         $queryRet.setVar($var.variableRet);
@@ -151,7 +151,7 @@ queryType1 returns [QueryExpression queryRet]:
     ;
 
 queryType2 returns [QueryExpression queryRet]:
-    line=LBRACKET predIdn=predicateIdentifier LPAR QUERYMARK RPAR RBRACKET
+    LBRACKET predIdn=predicateIdentifier LPAR line=QUERYMARK RPAR RBRACKET
     {
         $queryRet = new QueryExpression($predIdn.identifierRet);
         $queryRet.setVar(null);
@@ -195,7 +195,7 @@ implication returns [ImplicationStmt implicationRet]:
     {
         ArrayList<Statement> stmts = new ArrayList<>();
     }
-    line=LPAR expr=expression RPAR ARROW LPAR (stmt=statement { stmts.add($stmt.statementRet); })+ RPAR
+    LPAR expr=expression RPAR line=ARROW LPAR (stmt=statement { stmts.add($stmt.statementRet); })+ RPAR
     {
         $implicationRet = new ImplicationStmt($expr.exprRet, stmts);
         $implicationRet.setLine($line.getLine());
@@ -405,13 +405,13 @@ unary returns [Expression exprRet]:
     ot=other { $exprRet = $ot.exprRet; }
     | { UnaryOperator uop = UnaryOperator.not; }
     (
-        PLUS { uop = UnaryOperator.plus; } |
-        MINUS { uop = UnaryOperator.minus; } |
-        NOT { uop = UnaryOperator.not; }
+        op=PLUS { uop = UnaryOperator.plus; } |
+        op=MINUS { uop = UnaryOperator.minus; } |
+        op=NOT { uop = UnaryOperator.not; }
     ) ot=other
     {
         $exprRet = new UnaryExpression(uop, $ot.exprRet);
-        $exprRet.setLine($ot.exprRet.getLine());
+        $exprRet.setLine($op.getLine());
     }
     ;
 
