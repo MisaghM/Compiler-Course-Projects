@@ -40,9 +40,6 @@ public class NameAnalyzer extends Visitor<Void> {
     @Override
     public Void visit(FuncDeclaration funcDeclaration) {
         var functionItem = new FunctionItem(funcDeclaration);
-        var functionSymbolTable = new SymbolTable(SymbolTable.top, funcDeclaration.getName().getName());
-        functionItem.setFunctionSymbolTable(functionSymbolTable);
-        SymbolTable.push(functionSymbolTable);
 
         while (true) {
             try {
@@ -55,13 +52,16 @@ public class NameAnalyzer extends Visitor<Void> {
             }
         }
 
+        var functionSymbolTable = new SymbolTable(SymbolTable.top, funcDeclaration.getName().getName());
+        functionItem.setFunctionSymbolTable(functionSymbolTable);
+        SymbolTable.push(functionSymbolTable);
 
         for (ArgDeclaration varDeclaration : funcDeclaration.getArgs()) {
             varDeclaration.accept(this);
         }
 
         for (var stmt : funcDeclaration.getStatements()) {
-            if (stmt instanceof VarDecStmt) {
+            if (stmt instanceof VarDecStmt || stmt instanceof ArrayDecStmt) {
                 stmt.accept(this);
             }
         }
