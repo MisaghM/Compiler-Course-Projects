@@ -4,6 +4,7 @@ import ast.node.Program;
 import ast.node.declaration.*;
 import ast.node.statement.ArrayDecStmt;
 import ast.node.statement.VarDecStmt;
+import ast.node.statement.ForloopStmt;
 import compileError.*;
 import compileError.Name.*;
 import symbolTable.SymbolTable;
@@ -28,7 +29,9 @@ public class NameAnalyzer extends Visitor<Void> {
         }
 
         for (var stmt : program.getMain().getMainStatements()) {
-            if (stmt instanceof VarDecStmt || stmt instanceof ArrayDecStmt) {
+            if (stmt instanceof VarDecStmt
+                    || stmt instanceof ArrayDecStmt
+                    || stmt instanceof ForloopStmt) {
                 stmt.accept(this);
             }
         }
@@ -61,7 +64,9 @@ public class NameAnalyzer extends Visitor<Void> {
         }
 
         for (var stmt : funcDeclaration.getStatements()) {
-            if (stmt instanceof VarDecStmt || stmt instanceof ArrayDecStmt) {
+            if (stmt instanceof VarDecStmt
+                    || stmt instanceof ArrayDecStmt
+                    || stmt instanceof ForloopStmt) {
                 stmt.accept(this);
             }
         }
@@ -121,6 +126,26 @@ public class NameAnalyzer extends Visitor<Void> {
             }
         }
 
+        return null;
+    }
+
+    @Override
+    public Void visit(ForloopStmt forloopStmt) {
+        var forLoopItem = new ForLoopItem(forloopStmt);
+
+        var forLoopSymbolTable = new SymbolTable(SymbolTable.top, forloopStmt.getIterator().getName());
+        forLoopItem.setForLoopSymbolTable(forLoopSymbolTable);
+        SymbolTable.push(forLoopSymbolTable);
+
+        for (var stmt : forloopStmt.getStatements()) {
+            if (stmt instanceof VarDecStmt
+                    || stmt instanceof ArrayDecStmt
+                    || stmt instanceof ForloopStmt) {
+                stmt.accept(this);
+            }
+        }
+
+        SymbolTable.pop();
         return null;
     }
 }
