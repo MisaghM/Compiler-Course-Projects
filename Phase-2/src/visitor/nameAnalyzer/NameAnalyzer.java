@@ -2,6 +2,7 @@ package visitor.nameAnalyzer;
 
 import ast.node.Program;
 import ast.node.declaration.*;
+import ast.node.statement.ArrayDecStmt;
 import ast.node.statement.VarDecStmt;
 import compileError.*;
 import compileError.Name.*;
@@ -48,9 +49,9 @@ public class NameAnalyzer extends Visitor<Void> {
                 SymbolTable.top.put(functionItem);
                 break;
             } catch (ItemAlreadyExistsException e) {
-                if (!funcDeclaration.getName().getName().endsWith("@"))
+                if (!functionItem.getName().endsWith("@"))
                     nameErrors.add(new FunctionRedefinition(funcDeclaration.getName().getLine(), funcDeclaration.getName().getName()));
-                funcDeclaration.getName().setName(funcDeclaration.getName().getName() + "@");
+                functionItem.setName(functionItem.getName() + "@");
             }
         }
 
@@ -71,16 +72,16 @@ public class NameAnalyzer extends Visitor<Void> {
 
     @Override
     public Void visit(VarDecStmt varDeclaration) {
-        var variableItem = new VariableItem(varDeclaration.getIdentifier().getName(), varDeclaration.getType());
+        var variableItem = new VariableItem(varDeclaration);
 
         while (true) {
             try {
                 SymbolTable.top.put(variableItem);
                 break;
             } catch (ItemAlreadyExistsException e) {
-                if (!varDeclaration.getIdentifier().getName().endsWith("@"))
+                if (!variableItem.getName().endsWith("@"))
                     nameErrors.add(new VariableRedefinition(varDeclaration.getIdentifier().getLine(), varDeclaration.getIdentifier().getName()));
-                varDeclaration.getIdentifier().setName(varDeclaration.getIdentifier().getName() + "@");
+                variableItem.setName(variableItem.getName() + "@");
             }
         }
 
