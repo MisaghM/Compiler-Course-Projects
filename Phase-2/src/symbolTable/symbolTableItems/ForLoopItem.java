@@ -12,7 +12,7 @@ public class ForLoopItem extends SymbolTableItem {
     protected Type arrayType;
     protected SymbolTable forLoopSymbolTable;
     protected ForloopStmt forLoopStmt;
-    public static final String STARTKEY = "ForLoop_";
+    public static final String STARTKEY = "Variable_";
 
     public ForLoopItem(String name, Type identifierType, Type arrayType) {
         this.name = name;

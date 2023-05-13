@@ -137,6 +137,17 @@ public class NameAnalyzer extends Visitor<Void> {
         forLoopItem.setForLoopSymbolTable(forLoopSymbolTable);
         SymbolTable.push(forLoopSymbolTable);
 
+        while (true) {
+            try {
+                SymbolTable.top.put(forLoopItem);
+                break;
+            } catch (ItemAlreadyExistsException e) {
+                if (!forLoopItem.getName().endsWith("@"))
+                    nameErrors.add(new VariableRedefinition(forloopStmt.getIterator().getLine(), forloopStmt.getIterator().getName()));
+                forLoopItem.setName(forLoopItem.getName() + "@");
+            }
+        }
+
         for (var stmt : forloopStmt.getStatements()) {
             if (stmt instanceof VarDecStmt
                     || stmt instanceof ArrayDecStmt
