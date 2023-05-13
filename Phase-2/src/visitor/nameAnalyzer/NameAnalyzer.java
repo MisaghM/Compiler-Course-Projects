@@ -28,7 +28,7 @@ public class NameAnalyzer extends Visitor<Void> {
         }
 
         for (var stmt : program.getMain().getMainStatements()) {
-            if (stmt instanceof VarDecStmt) {
+            if (stmt instanceof VarDecStmt || stmt instanceof ArrayDecStmt) {
                 stmt.accept(this);
             }
         }
