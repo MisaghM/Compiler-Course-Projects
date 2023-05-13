@@ -87,5 +87,41 @@ public class NameAnalyzer extends Visitor<Void> {
 
         return null;
     }
+
+    @Override
+    public Void visit(ArrayDecStmt arrDeclaration) {
+        var arrayItem = new ArrayItem(arrDeclaration);
+
+        while (true) {
+            try {
+                SymbolTable.top.put(arrayItem);
+                break;
+            } catch (ItemAlreadyExistsException e) {
+                if (!arrayItem.getName().endsWith("@"))
+                    nameErrors.add(new VariableRedefinition(arrDeclaration.getIdentifier().getLine(), arrDeclaration.getIdentifier().getName()));
+                arrayItem.setName(arrayItem.getName() + "@");
+            }
+        }
+
+        return null;
+    }
+
+    @Override
+    public Void visit(ArgDeclaration argDeclaration) {
+        var argItem = new ArgItem(argDeclaration);
+
+        while (true) {
+            try {
+                SymbolTable.top.put(argItem);
+                break;
+            } catch (ItemAlreadyExistsException e) {
+                if (!argItem.getName().endsWith("@"))
+                    nameErrors.add(new VariableRedefinition(argDeclaration.getIdentifier().getLine(), argDeclaration.getIdentifier().getName()));
+                argItem.setName(argItem.getName() + "@");
+            }
+        }
+
+        return null;
+    }
 }
 
