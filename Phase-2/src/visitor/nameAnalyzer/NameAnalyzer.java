@@ -5,12 +5,12 @@ import ast.node.declaration.*;
 import ast.node.statement.ArrayDecStmt;
 import ast.node.statement.VarDecStmt;
 import ast.node.statement.ForloopStmt;
+import ast.node.statement.ImplicationStmt;
 import compileError.*;
 import compileError.Name.*;
 import symbolTable.SymbolTable;
 import symbolTable.symbolTableItems.*;
 import symbolTable.itemException.ItemAlreadyExistsException;
-import symbolTable.symbolTableItems.VariableItem;
 import visitor.Visitor;
 
 import java.util.ArrayList;
@@ -31,14 +31,14 @@ public class NameAnalyzer extends Visitor<Void> {
         for (var stmt : program.getMain().getMainStatements()) {
             if (stmt instanceof VarDecStmt
                     || stmt instanceof ArrayDecStmt
-                    || stmt instanceof ForloopStmt) {
+                    || stmt instanceof ForloopStmt
+                    || stmt instanceof ImplicationStmt) {
                 stmt.accept(this);
             }
         }
 
         return null;
     }
-
 
     @Override
     public Void visit(FuncDeclaration funcDeclaration) {
@@ -50,12 +50,12 @@ public class NameAnalyzer extends Visitor<Void> {
                 break;
             } catch (ItemAlreadyExistsException e) {
                 if (!functionItem.getName().endsWith("@"))
-                    nameErrors.add(new FunctionRedefinition(funcDeclaration.getName().getLine(), funcDeclaration.getName().getName()));
+                    nameErrors.add(new FunctionRedefinition(funcDeclaration.getLine(), functionItem.getName()));
                 functionItem.setName(functionItem.getName() + "@");
             }
         }
 
-        var functionSymbolTable = new SymbolTable(SymbolTable.top, funcDeclaration.getName().getName());
+        var functionSymbolTable = new SymbolTable(SymbolTable.top, functionItem.getName());
         functionItem.setFunctionSymbolTable(functionSymbolTable);
         SymbolTable.push(functionSymbolTable);
 
@@ -66,7 +66,8 @@ public class NameAnalyzer extends Visitor<Void> {
         for (var stmt : funcDeclaration.getStatements()) {
             if (stmt instanceof VarDecStmt
                     || stmt instanceof ArrayDecStmt
-                    || stmt instanceof ForloopStmt) {
+                    || stmt instanceof ForloopStmt
+                    || stmt instanceof ImplicationStmt) {
                 stmt.accept(this);
             }
         }
@@ -85,7 +86,7 @@ public class NameAnalyzer extends Visitor<Void> {
                 break;
             } catch (ItemAlreadyExistsException e) {
                 if (!variableItem.getName().endsWith("@"))
-                    nameErrors.add(new VariableRedefinition(varDeclaration.getIdentifier().getLine(), varDeclaration.getIdentifier().getName()));
+                    nameErrors.add(new VariableRedefinition(varDeclaration.getLine(), variableItem.getName()));
                 variableItem.setName(variableItem.getName() + "@");
             }
         }
@@ -103,7 +104,7 @@ public class NameAnalyzer extends Visitor<Void> {
                 break;
             } catch (ItemAlreadyExistsException e) {
                 if (!arrayItem.getName().endsWith("@"))
-                    nameErrors.add(new VariableRedefinition(arrDeclaration.getIdentifier().getLine(), arrDeclaration.getIdentifier().getName()));
+                    nameErrors.add(new VariableRedefinition(arrDeclaration.getLine(), arrayItem.getName()));
                 arrayItem.setName(arrayItem.getName() + "@");
             }
         }
@@ -121,7 +122,7 @@ public class NameAnalyzer extends Visitor<Void> {
                 break;
             } catch (ItemAlreadyExistsException e) {
                 if (!argItem.getName().endsWith("@"))
-                    nameErrors.add(new VariableRedefinition(argDeclaration.getIdentifier().getLine(), argDeclaration.getIdentifier().getName()));
+                    nameErrors.add(new VariableRedefinition(argDeclaration.getLine(), argItem.getName()));
                 argItem.setName(argItem.getName() + "@");
             }
         }
@@ -133,25 +134,39 @@ public class NameAnalyzer extends Visitor<Void> {
     public Void visit(ForloopStmt forloopStmt) {
         var forLoopItem = new ForLoopItem(forloopStmt);
 
-        var forLoopSymbolTable = new SymbolTable(SymbolTable.top, forloopStmt.getIterator().getName());
+        var forLoopSymbolTable = new SymbolTable(SymbolTable.top, forLoopItem.getName());
         forLoopItem.setForLoopSymbolTable(forLoopSymbolTable);
         SymbolTable.push(forLoopSymbolTable);
 
-        while (true) {
-            try {
-                SymbolTable.top.put(forLoopItem);
-                break;
-            } catch (ItemAlreadyExistsException e) {
-                if (!forLoopItem.getName().endsWith("@"))
-                    nameErrors.add(new VariableRedefinition(forloopStmt.getIterator().getLine(), forloopStmt.getIterator().getName()));
-                forLoopItem.setName(forLoopItem.getName() + "@");
-            }
+        try {
+            SymbolTable.top.put(forLoopItem);
+        } catch (ItemAlreadyExistsException e) {
+            // Will not reach here because SymbolTable.top is empty.
         }
 
         for (var stmt : forloopStmt.getStatements()) {
             if (stmt instanceof VarDecStmt
                     || stmt instanceof ArrayDecStmt
-                    || stmt instanceof ForloopStmt) {
+                    || stmt instanceof ForloopStmt
+                    || stmt instanceof ImplicationStmt) {
+                stmt.accept(this);
+            }
+        }
+
+        SymbolTable.pop();
+        return null;
+    }
+
+    @Override
+    public Void visit(ImplicationStmt implStmt) {
+        var implSymbolTable = new SymbolTable(SymbolTable.top, "ImplicationStmt");
+        SymbolTable.push(implSymbolTable);
+
+        for (var stmt : implStmt.getStatements()) {
+            if (stmt instanceof VarDecStmt
+                    || stmt instanceof ArrayDecStmt
+                    || stmt instanceof ForloopStmt
+                    || stmt instanceof ImplicationStmt) {
                 stmt.accept(this);
             }
         }
@@ -160,4 +175,3 @@ public class NameAnalyzer extends Visitor<Void> {
         return null;
     }
 }
-

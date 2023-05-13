@@ -4,8 +4,6 @@ import ast.node.statement.ForloopStmt;
 import ast.type.Type;
 import symbolTable.SymbolTable;
 
-import java.util.ArrayList;
-
 public class ForLoopItem extends SymbolTableItem {
 
     protected Type identifierType;
@@ -45,11 +43,11 @@ public class ForLoopItem extends SymbolTableItem {
 
     public void setName(String name) {
         this.name = name;
-        forLoopStmt.getIterator().setName(name);
+        this.forLoopStmt.getIterator().setName(name);
     }
 
     public ForloopStmt getHandlerStmt() {
-        return forLoopStmt;
+        return this.forLoopStmt;
     }
 
     @Override
