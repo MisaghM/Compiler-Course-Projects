@@ -41,6 +41,7 @@ public class NameAnalyzer extends Visitor<Void> {
         var functionItem = new FunctionItem(funcDeclaration);
         var functionSymbolTable = new SymbolTable(SymbolTable.top, funcDeclaration.getName().getName());
         functionItem.setFunctionSymbolTable(functionSymbolTable);
+        SymbolTable.push(functionSymbolTable);
 
         try {
             SymbolTable.top.put(functionItem);
