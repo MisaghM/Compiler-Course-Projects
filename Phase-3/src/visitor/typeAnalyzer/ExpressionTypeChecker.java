@@ -120,6 +120,21 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     }
 
     @Override
+    public Type visit(ArrayAccess arrayAccess) {
+        try {
+            VariableItem var = (VariableItem) SymbolTable.root.get(VariableItem.STARTKEY + arrayAccess.getName());
+            if (arrayAccess.getIndex().accept(this) instanceof IntType) {
+                return var.getType();
+            }
+//            typeErrors.add(new UnsupportedOperandType(arrayAccess.getLine(), "[]"));
+            return new NoType();
+        } catch (ItemNotFoundException e) {
+            typeErrors.add(new VarNotDeclared(arrayAccess.getLine(), arrayAccess.getName()));
+            return new NoType();
+        }
+    }
+
+    @Override
     public Type visit(FunctionCall functionCall) {
         try {
             FunctionItem func = (FunctionItem) SymbolTable.root.get(FunctionItem.STARTKEY + functionCall.getFuncName().getName());

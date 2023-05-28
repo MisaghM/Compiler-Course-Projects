@@ -112,7 +112,7 @@ public class TypeAnalyzer extends Visitor<Void> {
     @Override
     public Void visit(FunctionCall functionCall) {
         try {
-            SymbolTable.root.get(FunctionItem.STARTKEY + functionCall.getUFuncName().getName());
+            SymbolTable.root.get(FunctionItem.STARTKEY + functionCall.getFuncName().getName());
         } catch (ItemNotFoundException e) {
 
         }
