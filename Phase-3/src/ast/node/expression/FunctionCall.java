@@ -16,7 +16,7 @@ public class FunctionCall extends Expression{
         this.funcName = funcName;
     }
 
-    public Identifier getUFuncName() {
+    public Identifier getFuncName() {
         return funcName;
     }
 

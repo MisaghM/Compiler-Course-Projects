@@ -38,7 +38,7 @@ public class FunctionItem extends SymbolTableItem {
         return this.functionSymbolTable;
     }
 
-    public void setFunctionDeclaration(FuncDeclaration functionDeclarationDeclaration)
+    public void setFunctionDeclaration(FuncDeclaration functionDeclaration)
     {
         this.functionDeclaration = functionDeclaration;
     }
