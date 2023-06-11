@@ -1,0 +1,21 @@
+main{ # main body =>
+    int num_1;
+    float num_2 = -0.012;
+    boolean flag = (5 == 6);
+    int[2] aA_2;
+    num2 = num1 * 5 + (+6) - 10.00 / a[2];
+    Predicate1(flag);
+    (true) => ( print(num_1); (flag >= 5 * num2 % aA_2[num_1]) => (num_2 = num1;) )
+    int[4] a2 = [2, 4, 6, 8];
+    int num = a2[1] +a2[4];
+    (true || false && 8 >= -2 || 5 == num1 + 3) => (a = 5; IsPredicate(b);)
+
+    for (i : aA_2)
+    {
+        (a == b && isDoubled(a)) => (flag = true; print(flag);)
+        print([?IsPredicate(a2[5])]);
+    }
+    EventNum(i);
+    boolean flag = isPossible(a);
+    print([EventNum(?)]);
+}

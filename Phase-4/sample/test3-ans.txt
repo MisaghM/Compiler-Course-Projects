@@ -1,0 +1,6 @@
+Line 6: Variable num2 is not declared
+Line 6: Variable num1 is not declared
+Line 6: Variable a is not declared
+Line 6: Unsupported operand type for operator sub
+Line 6: Unsupported operand type for operator assign
+Line 11: Variable num1 is not declared

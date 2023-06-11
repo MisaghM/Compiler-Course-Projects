@@ -1,0 +1,11 @@
+Line 5: Variable b is not declared
+Line 5: Variable c is not declared
+Line 5: Variable d is not declared
+Line 5: Unsupported operand type for operator div
+Line 5: Unsupported operand type for operator mult
+Line 5: Variable e is not declared
+Line 5: Unsupported operand type for operator gte
+Line 5: Variable f is not declared
+Line 5: Unsupported operand type for operator eq
+Line 24: Variable isRend is not declared
+Line 24: Unsupported operand type for operator assign
