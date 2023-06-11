@@ -1,6 +1,11 @@
-
+function calculate(): int {
+    int p = 20;
+    int q = 4;
+    int result;
+    result = 3 + p / q;
+    return result;
+}
 
 main{
-
-    int x = b(c);
+    calculate();
 }
