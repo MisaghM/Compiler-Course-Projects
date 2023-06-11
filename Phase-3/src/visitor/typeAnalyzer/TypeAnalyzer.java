@@ -7,9 +7,12 @@ import ast.node.declaration.MainDeclaration;
 import ast.node.expression.*;
 import ast.node.expression.operators.BinaryOperator;
 import ast.node.expression.operators.UnaryOperator;
+import ast.node.statement.ArrayDecStmt;
 import ast.node.statement.AssignStmt;
 import ast.node.statement.ForloopStmt;
 import ast.node.statement.ImplicationStmt;
+import ast.node.statement.PrintStmt;
+import ast.node.statement.ReturnStmt;
 import ast.node.statement.VarDecStmt;
 import ast.type.NoType;
 import ast.type.Type;
@@ -24,6 +27,7 @@ import symbolTable.SymbolTable;
 import symbolTable.itemException.ItemNotFoundException;
 import symbolTable.symbolTableItems.ForLoopItem;
 import symbolTable.symbolTableItems.FunctionItem;
+import symbolTable.symbolTableItems.ImplicationItem;
 import symbolTable.symbolTableItems.MainItem;
 import visitor.Visitor;
 
@@ -40,15 +44,15 @@ public class TypeAnalyzer extends Visitor<Void> {
         }
 
         program.getMain().accept(this);
-
         return null;
     }
 
     @Override
     public Void visit(FuncDeclaration funcDeclaration) {
         try {
-            FunctionItem functionItem = (FunctionItem) SymbolTable.root.get(FunctionItem.STARTKEY + funcDeclaration.getName().getName());
-            SymbolTable.push((functionItem.getFunctionSymbolTable()));
+            FunctionItem functionItem = (FunctionItem) SymbolTable.root
+                    .get(FunctionItem.STARTKEY + funcDeclaration.getName().getName());
+            SymbolTable.push(functionItem.getFunctionSymbolTable());
         } catch (ItemNotFoundException e) {
             // unreachable
         }
@@ -58,7 +62,6 @@ public class TypeAnalyzer extends Visitor<Void> {
         }
 
         SymbolTable.pop();
-
         return null;
     }
 
@@ -73,23 +76,25 @@ public class TypeAnalyzer extends Visitor<Void> {
         for (var stmt : mainDeclaration.getMainStatements()) {
             stmt.accept(this);
         }
-
         return null;
     }
 
     @Override
     public Void visit(ForloopStmt forloopStmt) {
-        try { // FIXME: I don't fucking get this
-            ForLoopItem forLoopItem = (ForLoopItem) SymbolTable.root.get(forloopStmt.toString());
-            SymbolTable.push((forLoopItem.getForLoopSymbolTable()));
+        try {
+            ForLoopItem forLoopItem = (ForLoopItem) SymbolTable.top
+                    .get(ForLoopItem.STARTKEY + forloopStmt.toString() + forloopStmt.getForloopId());
+            SymbolTable.push(forLoopItem.getForLoopSymbolTable());
         } catch (ItemNotFoundException e) {
-
+            // unreachable
         }
 
-        // TODO: Complete this
+        forloopStmt.getArrayName().accept(expressionTypeChecker);
+        for (var stmt : forloopStmt.getStatements()) {
+            stmt.accept(this);
+        }
 
         SymbolTable.pop();
-
         return null;
     }
 
@@ -103,9 +108,9 @@ public class TypeAnalyzer extends Visitor<Void> {
         }
 
         if (!expressionTypeChecker.isLvalue(assignStmt.getLValue())) {
+            // is handled in grammar
             typeErrors.add(new LeftSideNotLValue(assignStmt.getLine()));
         }
-
         return null;
     }
 
@@ -114,10 +119,85 @@ public class TypeAnalyzer extends Visitor<Void> {
         try {
             SymbolTable.root.get(FunctionItem.STARTKEY + functionCall.getFuncName().getName());
         } catch (ItemNotFoundException e) {
-
+            // unreachable
         }
 
+        functionCall.accept(expressionTypeChecker);
+        return null;
+    }
 
+    @Override
+    public Void visit(ReturnStmt returnStmt) {
+        var retExpr = returnStmt.getExpression();
+        if (retExpr != null) {
+            retExpr.accept(expressionTypeChecker);
+        }
+        return null;
+    }
+
+    @Override
+    public Void visit(PrintStmt printStmt) {
+        var printExpr = printStmt.getArg();
+        if (printExpr != null) {
+            printExpr.accept(expressionTypeChecker);
+        }
+        return null;
+    }
+
+    @Override
+    public Void visit(ImplicationStmt implicationStmt) {
+        try {
+            ImplicationItem implicationItem = (ImplicationItem) SymbolTable.top
+                    .get(ImplicationItem.STARTKEY + implicationStmt.toString() + implicationStmt.getImplicationId());
+            SymbolTable.push(implicationItem.getImplicationSymbolTable());
+        } catch (ItemNotFoundException e) {
+            // unreachable
+        }
+
+        Type tl = implicationStmt.getCondition().accept(expressionTypeChecker);
+        if (!(tl instanceof BooleanType) && !(tl instanceof NoType)) {
+            typeErrors.add(new ConditionTypeNotBool(implicationStmt.getLine()));
+        }
+
+        for (var stmt : implicationStmt.getStatements()) {
+            stmt.accept(this);
+        }
+
+        SymbolTable.pop();
+        return null;
+    }
+
+    @Override
+    public Void visit(VarDecStmt vardecStmt) {
+        if (vardecStmt.getInitialExpression() == null) {
+            return null;
+        }
+        Type t1 = vardecStmt.getInitialExpression().accept(expressionTypeChecker);
+        Type t2 = vardecStmt.getType();
+        if (!expressionTypeChecker.sameType(t1, t2) && !(t1 instanceof NoType) && !(t2 instanceof NoType)) {
+            typeErrors.add(new UnsupportedOperandType(vardecStmt.getLine(), BinaryOperator.assign.name()));
+        }
+        return null;
+    }
+
+    @Override
+    public Void visit(ArrayDecStmt arrDecStmt) {
+        if (arrDecStmt.getInitialValues().isEmpty()) {
+            return null;
+        }
+
+        boolean hasError = false;
+        for (var item : arrDecStmt.getInitialValues()) {
+            Type t1 = item.accept(expressionTypeChecker);
+            Type t2 = arrDecStmt.getType();
+            if (!expressionTypeChecker.sameType(t1, t2) && !(t1 instanceof NoType) && !(t2 instanceof NoType)) {
+                hasError = true;
+            }
+        }
+
+        if (hasError) {
+            typeErrors.add(new UnsupportedOperandType(arrDecStmt.getLine(), BinaryOperator.assign.name()));
+        }
         return null;
     }
 }

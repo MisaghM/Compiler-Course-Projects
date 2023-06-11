@@ -7,6 +7,7 @@ import java.util.ArrayList;
 
 //Line -> FOR
 public class ForloopStmt extends Statement {
+    private int id;
     private Identifier iterator;
     private Identifier arrayName;
     private ArrayList<Statement> bodyStmts = new ArrayList<>();
@@ -41,6 +42,14 @@ public class ForloopStmt extends Statement {
 
     public void setArrayName(Identifier identifier) {
         this.arrayName = identifier;
+    }
+
+    public int getForloopId() {
+        return id;
+    }
+
+    public void setForloopId(int id) {
+        this.id = id;
     }
 
     @Override

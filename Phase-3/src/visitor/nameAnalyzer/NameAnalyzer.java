@@ -3,12 +3,13 @@ package visitor.nameAnalyzer;
 import ast.node.Program;
 import ast.node.declaration.*;
 import ast.node.statement.*;
+import ast.type.NoType;
 import compileError.*;
 import compileError.Name.*;
 import symbolTable.SymbolTable;
 import symbolTable.symbolTableItems.*;
 import symbolTable.itemException.ItemAlreadyExistsException;
-import symbolTable.symbolTableItems.VariableItem;
+import symbolTable.itemException.ItemNotFoundException;
 import visitor.Visitor;
 
 import java.util.ArrayList;
@@ -27,6 +28,7 @@ public class NameAnalyzer extends Visitor<Void> {
             functionDeclaration.accept(this);
         }
 
+        // program.getMain().accept(this);
         for (var stmt : program.getMain().getMainStatements()) {
             if(stmt instanceof VarDecStmt) {
                 stmt.accept(this);
@@ -45,6 +47,30 @@ public class NameAnalyzer extends Visitor<Void> {
         return null;
     }
 
+    // @Override
+    // public Void visit(MainDeclaration mainDeclaration) {
+    //     var mainItem = new MainItem(mainDeclaration);
+    //     var mainSymbolTable = new SymbolTable(SymbolTable.top, "main");
+    //     mainItem.setMainItemSymbolTable(mainSymbolTable);
+    //     SymbolTable.push(mainSymbolTable);
+
+    //     for (var stmt : mainDeclaration.getMainStatements()) {
+    //         if (stmt instanceof VarDecStmt) {
+    //             stmt.accept(this);
+    //         }
+    //         if (stmt instanceof ArrayDecStmt) {
+    //             stmt.accept(this);
+    //         }
+    //         if (stmt instanceof ForloopStmt) {
+    //             stmt.accept(this);
+    //         }
+    //         if (stmt instanceof ImplicationStmt) {
+    //             stmt.accept(this);
+    //         }
+    //     }
+
+    //     return null;
+    // }
 
     @Override
     public Void visit(FuncDeclaration funcDeclaration) {
@@ -94,9 +120,34 @@ public class NameAnalyzer extends Visitor<Void> {
 
     @Override
     public Void visit(ForloopStmt forloopStmt) {
+        var forloopItem = new ForLoopItem(forloopStmt);
         var forLoopSymbolTable = new SymbolTable(SymbolTable.top, forloopStmt.toString());
+        forloopItem.setForLoopSymbolTable(forLoopSymbolTable);
+
+        try {
+            SymbolTable.top.put(forloopItem);
+        }
+        catch (ItemAlreadyExistsException e) {
+            // unreachable
+        }
+
+        VariableItem forVarItem;
+        try {
+            var x = (VariableItem) SymbolTable.top.get(VariableItem.STARTKEY + forloopStmt.getArrayName().getName());
+            forVarItem = new VariableItem(forloopStmt.getIterator().getName(), x.getType());
+        }
+        catch (ItemNotFoundException e) {
+            forVarItem = new VariableItem(forloopStmt.getIterator().getName(), new NoType());
+        }
 
         SymbolTable.push(forLoopSymbolTable);
+        try {
+            SymbolTable.top.put(forVarItem);
+        }
+        catch (ItemAlreadyExistsException e) {
+            // unreachable
+        }
+
         for(Statement stmt: forloopStmt.getStatements()) {
             if(stmt instanceof VarDecStmt) {
                 stmt.accept(this);
@@ -121,7 +172,16 @@ public class NameAnalyzer extends Visitor<Void> {
 
     @Override
     public Void visit(ImplicationStmt implicationStmt) {
+        var implicationItem = new ImplicationItem(implicationStmt);
         var implicationSymbolTable = new SymbolTable(SymbolTable.top, implicationStmt.toString());
+        implicationItem.setImplicationSymbolTable(implicationSymbolTable);
+
+        try {
+            SymbolTable.top.put(implicationItem);
+        }
+        catch (ItemAlreadyExistsException e) {
+            // unreachable
+        }
 
         SymbolTable.push(implicationSymbolTable);
         for(Statement stmt: implicationStmt.getStatements()) {
@@ -161,6 +221,7 @@ public class NameAnalyzer extends Visitor<Void> {
 
     @Override
     public Void visit(ArrayDecStmt arrayDecStmt) {
+        // var variableItem = new ArrayItem(arrayDecStmt);
         var variableItem = new VariableItem(arrayDecStmt.getIdentifier().getName(), arrayDecStmt.getType());
         try {
             SymbolTable.top.put(variableItem);

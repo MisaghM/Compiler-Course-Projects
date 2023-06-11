@@ -86,8 +86,8 @@ public class ASTPrinter extends Visitor<Void> {
     @Override
     public Void visit(FunctionCall functionCall) {
         messagePrinter(functionCall.getLine(), functionCall.toString());
-        if (functionCall.getUFuncName() != null)
-            functionCall.getUFuncName().accept(this);
+        if (functionCall.getFuncName() != null)
+            functionCall.getFuncName().accept(this);
         for (Expression expression: functionCall.getArgs())
             expression.accept(this);
         return null;

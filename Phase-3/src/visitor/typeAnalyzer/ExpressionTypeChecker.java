@@ -4,7 +4,7 @@ import ast.node.declaration.ArgDeclaration;
 import ast.node.expression.*;
 import ast.node.expression.operators.BinaryOperator;
 import ast.node.expression.operators.UnaryOperator;
-import ast.node.expression.values.IntValue;
+import ast.node.expression.values.*;
 import ast.type.NoType;
 import ast.type.Type;
 import ast.type.primitiveType.BooleanType;
@@ -15,7 +15,9 @@ import compileError.Type.FunctionNotDeclared;
 import compileError.Type.UnsupportedOperandType;
 import compileError.Type.VarNotDeclared;
 import symbolTable.SymbolTable;
+import symbolTable.itemException.ItemAlreadyExistsException;
 import symbolTable.itemException.ItemNotFoundException;
+import symbolTable.symbolTableItems.ArrayItem;
 import symbolTable.symbolTableItems.FunctionItem;
 import symbolTable.symbolTableItems.VariableItem;
 import visitor.Visitor;
@@ -40,7 +42,6 @@ public class ExpressionTypeChecker extends Visitor<Type> {
 
     @Override
     public Type visit(UnaryExpression unaryExpression) {
-
         Expression uExpr = unaryExpression.getOperand();
         Type expType = uExpr.accept(this);
         UnaryOperator operator = unaryExpression.getUnaryOperator();
@@ -52,6 +53,9 @@ public class ExpressionTypeChecker extends Visitor<Type> {
         }
         else if (expType instanceof IntType) {
             return new IntType();
+        }
+        else if (expType instanceof FloatType) {
+            return new FloatType();
         }
 
         if (!(expType instanceof NoType)) {
@@ -75,11 +79,15 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                 if (tl instanceof IntType && tr instanceof IntType) {
                     return new IntType();
                 }
-                if (tl instanceof NoType && tr instanceof IntType || tl instanceof IntType && tr instanceof NoType) {
+                if (tl instanceof FloatType && tr instanceof FloatType) {
+                    return new FloatType();
+                }
+                if ((tl instanceof NoType && (tr instanceof IntType || tr instanceof FloatType)) ||
+                    (tr instanceof NoType && (tl instanceof IntType || tl instanceof FloatType))) {
                     return new NoType();
                 }
             }
-            case gt, lt, gte, lte -> { // TODO: The fuck vaghean
+            case eq, neq, gt, lt, gte, lte -> {
                 if (sameType(tl, tr)) {
                     return new BooleanType();
                 }
@@ -91,16 +99,10 @@ public class ExpressionTypeChecker extends Visitor<Type> {
                 if (tl instanceof BooleanType && tr instanceof BooleanType) {
                     return new BooleanType();
                 }
-                if (tl instanceof NoType && tr instanceof BooleanType || tl instanceof BooleanType && tr instanceof NoType) {
+                if ((tl instanceof NoType && tr instanceof BooleanType) ||
+                    (tr instanceof NoType && tl instanceof BooleanType)) {
                     return new NoType();
                 }
-            }
-            case eq, neq -> {
-                if (sameType(tl, tr)) {
-                    return new BooleanType();
-                }
-                if (tl instanceof NoType || tr instanceof NoType)
-                    return new NoType();
             }
         }
 
@@ -111,10 +113,17 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     @Override
     public Type visit(Identifier identifier) {
         try {
-            VariableItem var = (VariableItem) SymbolTable.root.get(VariableItem.STARTKEY + identifier.getName());
+            VariableItem var = (VariableItem) SymbolTable.top.get(VariableItem.STARTKEY + identifier.getName());
             return var.getType();
         } catch (ItemNotFoundException e) {
             typeErrors.add(new VarNotDeclared(identifier.getLine(), identifier.getName()));
+            VariableItem vi = new VariableItem(identifier.getName(), new NoType());
+            try {
+                SymbolTable.top.put(vi);
+            }
+            catch (ItemAlreadyExistsException ee) {
+                // unreachable?
+            }
             return new NoType();
         }
     }
@@ -122,14 +131,21 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     @Override
     public Type visit(ArrayAccess arrayAccess) {
         try {
-            VariableItem var = (VariableItem) SymbolTable.root.get(VariableItem.STARTKEY + arrayAccess.getName());
+            VariableItem var = (VariableItem) SymbolTable.top.get(VariableItem.STARTKEY + arrayAccess.getName());
             if (arrayAccess.getIndex().accept(this) instanceof IntType) {
                 return var.getType();
             }
-//            typeErrors.add(new UnsupportedOperandType(arrayAccess.getLine(), "[]"));
+            // typeErrors.add(new UnsupportedOperandType(arrayAccess.getLine(), "[]"));
             return new NoType();
         } catch (ItemNotFoundException e) {
             typeErrors.add(new VarNotDeclared(arrayAccess.getLine(), arrayAccess.getName()));
+            VariableItem aa = new VariableItem(arrayAccess.getName(), new NoType());
+            try {
+                SymbolTable.top.put(aa);
+            }
+            catch (ItemAlreadyExistsException ee) {
+                // unreachable
+            }
             return new NoType();
         }
     }
@@ -137,22 +153,48 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     @Override
     public Type visit(FunctionCall functionCall) {
         try {
-            FunctionItem func = (FunctionItem) SymbolTable.root.get(FunctionItem.STARTKEY + functionCall.getFuncName().getName());
+            FunctionItem func = (FunctionItem) SymbolTable.top.get(FunctionItem.STARTKEY + functionCall.getFuncName().getName());
             ArrayList<Expression> args = functionCall.getArgs();
+            if (func.getHandlerDeclaration() == null) {
+                return new NoType();
+            }
             ArrayList<ArgDeclaration> argTypes = func.getHandlerDeclaration().getArgs();
             if (args.size() != argTypes.size()) {
-//                typeErrors.add(new FunctionNotDeclared(functionCall.getLine(), functionCall.getFuncName().getName()));
+            // typeErrors.add(new FunctionNotDeclared(functionCall.getLine(), functionCall.getFuncName().getName()));
             }
             for (int i = 0; i < args.size(); i++) {
                 Type argType = args.get(i).accept(this);
                 Type argType2 = argTypes.get(i).getType();
                 if (!sameType(argType, argType2)) {
-//                    typeErrors.add(new FunctionNotDeclared(functionCall.getLine(), functionCall.getFuncName().getName()));
+                    // typeErrors.add(new FunctionNotDeclared(functionCall.getLine(), functionCall.getFuncName().getName()));
                 }
             }
             return func.getHandlerDeclaration().getType();
         } catch (ItemNotFoundException e) {
             typeErrors.add(new FunctionNotDeclared(functionCall.getLine(), functionCall.getFuncName().getName()));
+            ArrayList<Type> arrl = new ArrayList<>();
+            for (var item : functionCall.getArgs()) {
+                arrl.add(item.getType());
+            }
+            FunctionItem vi = new FunctionItem(functionCall.getFuncName().getName(), arrl);
+            try {
+                SymbolTable.top.put(vi);
+            }
+            catch (ItemAlreadyExistsException ee) {
+                // unreachable
+            }
+            return new NoType();
+        }
+    }
+
+    @Override
+    public Type visit(QueryExpression queryExpression) {
+        var item = queryExpression.getVar();
+        if (item != null) {
+            item.accept(this);
+            return new BooleanType();
+        }
+        else {
             return new NoType();
         }
     }
@@ -163,12 +205,12 @@ public class ExpressionTypeChecker extends Visitor<Type> {
     }
 
     @Override
-    public Type visit(FloatType value) {
+    public Type visit(FloatValue value) {
         return new FloatType();
     }
 
     @Override
-    public Type visit(BooleanType value) {
+    public Type visit(BooleanValue value) {
         return new BooleanType();
     }
 }
