@@ -152,9 +152,12 @@ public class TypeAnalyzer extends Visitor<Void> {
 
     @Override
     public Void visit(VarDecStmt varDecStmt) {
-        var type = varDecStmt.getInitialExpression().accept(expressionTypeChecker);
-        if(type.toString() != varDecStmt.getType().toString() && type.toString() != "noType") {
-            typeErrors.add(new UnsupportedOperandType(varDecStmt.getLine(), BinaryOperator.eq.name()));
+        var initialExpression = varDecStmt.getInitialExpression();
+        if (initialExpression != null) {
+            var type = initialExpression.accept(expressionTypeChecker);
+            if (type.toString() != varDecStmt.getType().toString() && type.toString() != "noType") {
+                typeErrors.add(new UnsupportedOperandType(varDecStmt.getLine(), BinaryOperator.eq.name()));
+            }
         }
         return null;
     }

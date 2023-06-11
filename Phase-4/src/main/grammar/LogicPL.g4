@@ -32,7 +32,7 @@ functionVarDec returns [ArgDeclaration argDeclaration]:
 
 mainBlock returns [MainDeclaration main]:
     {ArrayList<Statement> mainStmts = new ArrayList<>();}
-    m = MAIN LBRACE (s = statement {mainStmts.add($s.statementRet);})+ RBRACE
+    m = MAIN LBRACE (s = statement {mainStmts.add($s.statementRet);})* RBRACE
     {$main = new MainDeclaration(mainStmts); $main.setLine($m.getLine());}
     ;
 
