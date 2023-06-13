@@ -7,6 +7,7 @@ public class ILoad extends Bytecode {
         this.index = index;
     }
 
+    @Override
     public String toString() {
         return indent(1) + (index < 4 ? "iload_" + index : "iload " + index);
     }

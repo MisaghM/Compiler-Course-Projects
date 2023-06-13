@@ -28,6 +28,7 @@ public class IConst extends Bytecode {
         return res;
     }
 
+    @Override
     public String toString() {
         return indent(1) + getBytecode(value);
     }

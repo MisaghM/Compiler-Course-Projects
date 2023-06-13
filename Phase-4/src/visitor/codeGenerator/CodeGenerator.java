@@ -1,16 +1,15 @@
 package visitor.codeGenerator;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
+import ast.node.expression.*;
+import ast.node.statement.PrintStmt;
 import visitor.Visitor;
 import ast.node.Program;
 import ast.node.declaration.FuncDeclaration;
 import ast.node.declaration.MainDeclaration;
-import ast.node.expression.Expression;
-import ast.node.expression.UnaryExpression;
-import ast.node.expression.BinaryExpression;
-import ast.node.expression.Variable;
-import ast.node.expression.Identifier;
 import ast.node.expression.values.*;
 import ast.node.statement.AssignStmt;
 import ast.node.statement.ReturnStmt;
@@ -19,14 +18,25 @@ import ast.type.Type;
 import ast.type.primitiveType.IntType;
 import ast.type.primitiveType.FloatType;
 import ast.type.primitiveType.BooleanType;
+import bytecode.*;
 
-public class CodeGenerator extends Visitor<String> {
-    private final String indent = "    ";
+public class CodeGenerator extends Visitor<List<Bytecode>> {
+    Program program;
+    private final HashMap<String, Integer> slots = new HashMap<>();
+    private JasminClass mainClass;
 
-    private final StringBuilder result = new StringBuilder();
-    private final HashMap<String, Integer> slots = new HashMap<String, Integer>();
+    private String getTypeStr(Type type) {
+        if (type instanceof IntType) {
+            return "I";
+        } else if (type instanceof FloatType) {
+            return "F";
+        } else if (type instanceof BooleanType) {
+            return "Z";
+        }
+        return "V";
+    }
 
-    private Integer slotOf(String var) {
+    private int slotOf(String var) {
         if (!slots.containsKey(var)) {
             slots.put(var, slots.size());
             return slots.size() - 1;
@@ -34,177 +44,182 @@ public class CodeGenerator extends Visitor<String> {
         return slots.get(var);
     }
 
-    private String startClass(String name) {
-        StringBuilder res = new StringBuilder();
-        res.append(".class public ").append(name).append('\n');
-        res.append(".super java/lang/Object\n\n");
-        res.append(".method public <init>()V\n");
-        res.append(indent + "aload_0\n");
-        res.append(indent + "invokenonvirtual java/lang/Object/<init>()V\n");
-        res.append(indent + "return\n");
-        res.append(".end method\n");
-        return res.toString();
+    private int calcStackSize(List<Bytecode> stmts) {
+        int max = 1;
+        int cur = 0;
+        for (var stmt : stmts) {
+            switch (stmt.getClass().getSimpleName()) {
+                case "IAdd", "ISub", "IMul", "IDiv", "IRem", "IXor", "IStore" -> cur -= 1;
+                case "IConst", "ILoad", "ALoad", "GetStatic", "InvokeStatic", "InvokeVirtual" -> cur += 1;
+                default -> {
+                }
+            }
+            max = Math.max(max, cur);
+        }
+        return max;
     }
 
-    private String getTypeStr(Type type) {
-        if (type instanceof IntType) {
-            return "I";
-        }
-        if (type instanceof FloatType) {
-            return "F";
-        }
-        if (type instanceof BooleanType) {
-            return "Z";
-        }
-        return "V";
+    public CodeGenerator(Program program) {
+        this.program = program;
+    }
+
+    public Bytecode generate() {
+        program.accept(this);
+        return mainClass;
     }
 
     @Override
-    public String visit(Program program) {
-        result.append(startClass(program.toString())).append('\n');
-        result.append(program.getMain().accept(this)).append('\n');
+    public List<Bytecode> visit(Program program) {
+        mainClass = new JasminClass(program.toString());
         for (var func : program.getFuncs()) {
             slots.clear();
-            result.append(func.accept(this)).append('\n');
+            mainClass.addMethod(func.accept(this).get(0));
         }
-        return result.toString();
+        slots.clear();
+        mainClass.addMethod(program.getMain().accept(this).get(0));
+        return List.of(mainClass);
     }
 
     @Override
-    public String visit(MainDeclaration mainDeclaration) {
-        StringBuilder res = new StringBuilder();
-        res.append(".method public static main([Ljava/lang/String;)V\n");
-        res.append(indent + ".limit stack 32\n");
-        res.append(indent + ".limit locals 32\n");
-
-        slotOf("__args");
-
+    public List<Bytecode> visit(MainDeclaration mainDeclaration) {
+        List<Bytecode> stmts = new ArrayList<>();
+        slotOf("@args");
         for (var stmt : mainDeclaration.getMainStatements()) {
             if (stmt instanceof VarDecStmt ||
                     stmt instanceof AssignStmt ||
-                    stmt instanceof ReturnStmt) {
-                res.append(indent).append(stmt.accept(this));
+                    stmt instanceof ReturnStmt ||
+                    stmt instanceof PrintStmt) {
+                stmts.addAll(stmt.accept(this));
             }
         }
+        stmts.add(new Return());
 
-        res.append(indent + "return\n");
-        res.append(".end method\n");
-        return res.toString();
+        JasminMethod mainMethod = new JasminMethod("main", "V", List.of("[Ljava/lang/String;"), stmts);
+        mainMethod.setLocalSize(slots.size());
+        mainMethod.setStackSize(calcStackSize(stmts));
+        return List.of(mainMethod);
     }
 
     @Override
-    public String visit(FuncDeclaration funcDeclaration) {
-        StringBuilder res = new StringBuilder();
-        res.append(".method public static ").append(funcDeclaration.getName().getName());
-
-        res.append("(");
+    public List<Bytecode> visit(FuncDeclaration funcDeclaration) {
+        List<String> args = new ArrayList<>();
         for (var arg : funcDeclaration.getArgs()) {
-            res.append(getTypeStr(arg.getType()));
+            args.add(getTypeStr(arg.getType()));
             slotOf(arg.getIdentifier().getName());
         }
-        res.append(")");
-        res.append(getTypeStr(funcDeclaration.getType())).append('\n');
 
-        res.append(indent + ".limit stack 32\n");
-        res.append(indent + ".limit locals 32\n");
-
+        List<Bytecode> stmts = new ArrayList<>();
         for (var stmt : funcDeclaration.getStatements()) {
             if (stmt instanceof VarDecStmt ||
                     stmt instanceof AssignStmt ||
-                    stmt instanceof ReturnStmt) {
-                res.append(indent).append(stmt.accept(this));
+                    stmt instanceof ReturnStmt ||
+                    stmt instanceof PrintStmt) {
+                stmts.addAll(stmt.accept(this));
             }
         }
 
-        res.append(indent + "return\n");
-        res.append(".end method\n");
-        return res.toString();
+        if (stmts.size() == 0 || !(stmts.get(stmts.size() - 1) instanceof IReturn)) {
+            stmts.add(new IReturn());
+        }
+
+        JasminMethod method = new JasminMethod(funcDeclaration.getName().getName(),
+                getTypeStr(funcDeclaration.getType()),
+                args,
+                stmts);
+        method.setLocalSize(slots.size());
+        method.setStackSize(calcStackSize(stmts));
+        return List.of(method);
     }
 
     @Override
-    public String visit(VarDecStmt varDecStmt) {
+    public List<Bytecode> visit(VarDecStmt varDecStmt) {
+        List<Bytecode> stmts = new ArrayList<>();
         int slot = slotOf(varDecStmt.getIdentifier().getName());
         Expression init = varDecStmt.getInitialExpression();
         Type type = varDecStmt.getType();
 
-        StringBuilder res = new StringBuilder();
         if (type instanceof IntType || type instanceof BooleanType) {
-            if (init == null) {
-                res.append("iconst_0\n");
-            } else {
-                res.append(init.accept(this));
+            if (init != null) {
+                stmts.addAll(init.accept(this));
+                stmts.add(new IStore(slot));
             }
-            res.append("istore ").append(slot);
         }
 
-        res.append('\n');
-        return res.toString();
+        return stmts;
     }
 
     @Override
-    public String visit(AssignStmt assignStmt) {
-        String code = assignStmt.getRValue().accept(this);
+    public List<Bytecode> visit(AssignStmt assignStmt) {
+        List<Bytecode> stmts = new ArrayList<>(assignStmt.getRValue().accept(this));
         int slot = slotOf(((Variable) assignStmt.getLValue()).getName());
-        return code + "istore " + slot + '\n';
+        stmts.add(new IStore(slot));
+        return stmts;
     }
 
     @Override
-    public String visit(ReturnStmt returnStmt) {
-        String code = returnStmt.getExpression().accept(this);
-        return code;
+    public List<Bytecode> visit(ReturnStmt returnStmt) {
+        if (returnStmt.getExpression() == null) {
+            return List.of(new Return());
+        }
+        List<Bytecode> stmts = new ArrayList<>(returnStmt.getExpression().accept(this));
+        stmts.add(new IReturn());
+        return stmts;
     }
 
     @Override
-    public String visit(BinaryExpression binaryExpression) {
-        String leftCode = binaryExpression.getLeft().accept(this);
-        String rightCode = binaryExpression.getRight().accept(this);
-        String op = "";
+    public List<Bytecode> visit(PrintStmt printStmt) {
+        List<Bytecode> stmts = new ArrayList<>();
+        stmts.add(new GetStatic("java/lang/System", "out", "Ljava/io/PrintStream;"));
+        stmts.addAll(printStmt.getArg().accept(this));
+        stmts.add(new InvokeVirtual("java/io/PrintStream", "println", "(I)V"));
+        return stmts;
+    }
+
+    @Override
+    public List<Bytecode> visit(BinaryExpression binaryExpression) {
+        List<Bytecode> stmts = new ArrayList<>();
+        stmts.addAll(binaryExpression.getLeft().accept(this));
+        stmts.addAll(binaryExpression.getRight().accept(this));
         switch (binaryExpression.getBinaryOperator()) {
-            case add:
-                op = "iadd";
-                break;
-            case sub:
-                op = "isub";
-                break;
-            case mult:
-                op = "imul";
-                break;
-            case div:
-                op = "idiv";
-                break;
-            case mod:
-                op = "imod";
-                break;
-            default:
-                break;
+            case add -> stmts.add(new IAdd());
+            case sub -> stmts.add(new ISub());
+            case mult -> stmts.add(new IMul());
+            case div -> stmts.add(new IDiv());
+            case mod -> stmts.add(new IRem());
+            default -> {
+            }
         }
-        return leftCode + rightCode + op + '\n';
+        return stmts;
     }
 
     @Override
-    public String visit(UnaryExpression unaryExpression) {
-        String code = unaryExpression.getOperand().accept(this);
-        String op = "";
+    public List<Bytecode> visit(UnaryExpression unaryExpression) {
+        List<Bytecode> stmts = new ArrayList<>(unaryExpression.getOperand().accept(this));
         switch (unaryExpression.getUnaryOperator()) {
-            case plus:
-                break;
-            case minus:
-                op = "ineg";
-                break;
-            case not:
-                op = "iconst_1\nixor";
-                break;
+            case plus -> {
+            }
+            case minus -> stmts.add(new INeg());
+            case not -> stmts.addAll(List.of(new IConst(1), new IXor()));
         }
-        return code + op + '\n';
+        return stmts;
     }
 
     @Override
-    public String visit(Identifier identifier) {
-        return "iload " + slotOf(identifier.getName()) + '\n';
+    public List<Bytecode> visit(FunctionCall funcCall) {
+        JasminMethod method = mainClass.getMethod(funcCall.getUFuncName().getName());
+        if (method == null) {
+            return List.of();
+        }
+        return List.of(new InvokeStatic(mainClass.getName(), method.getName(), method.getSignature()));
     }
 
     @Override
-    public String visit(IntValue intValue) {
-        return "ldc " + intValue.getConstant() + '\n';
+    public List<Bytecode> visit(Identifier identifier) {
+        return List.of(new ILoad(slotOf(identifier.getName())));
+    }
+
+    @Override
+    public List<Bytecode> visit(IntValue intValue) {
+        return List.of(new IConst(intValue.getConstant()));
     }
 }

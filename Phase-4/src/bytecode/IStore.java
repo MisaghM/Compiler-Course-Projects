@@ -7,6 +7,7 @@ public class IStore extends Bytecode {
         this.index = index;
     }
 
+    @Override
     public String toString() {
         return indent(1) + (index < 4 ? "istore_" + index : "istore " + index);
     }

@@ -30,10 +30,10 @@ public class Main {
             return;
         }
 
-        CodeGenerator codeGen = new CodeGenerator();
-        String result = program.accept(codeGen);
+        CodeGenerator codeGen = new CodeGenerator(program);
+        String result = codeGen.generate().toString();
 
-        String output = (args.length > 1) ? args[1] : "out.jasmin";
+        String output = (args.length > 1) ? args[1] : "out.j";
         if (writeToFile(output, result)) {
             System.out.println("Compilation was Successful!!");
         }
