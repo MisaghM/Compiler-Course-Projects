@@ -2,8 +2,15 @@ function calculate(): int {
     int p = 20;
     int q = 4;
     int result;
-    result = 3 + p / q;
-    return result;
+    int x = 0;
+    x = p * q - x;
+    int y = p / q;
+    int z = p % 3;
+    result = x + y + z - 2;
+    return result; # 85
 }
 
-main{}
+main{
+    int res = calculate();
+    print(res);
+}
