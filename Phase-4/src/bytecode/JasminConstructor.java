@@ -8,7 +8,7 @@ public class JasminConstructor extends JasminMethod {
                 "V",
                 List.of(),
                 List.of(new ALoad(0),
-                        new InvokeSpecial(superClass, "<init>", "()V"),
+                        new InvokeNonVirtual(superClass, "<init>", "()V"),
                         new Return()));
         isStatic = false;
     }

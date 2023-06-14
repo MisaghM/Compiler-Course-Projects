@@ -5,7 +5,7 @@
 .limit stack 1
 .limit locals 1
     aload_0
-    invokespecial java/lang/Object/<init>()V
+    invokenonvirtual java/lang/Object/<init>()V
     return
 .end method
 
